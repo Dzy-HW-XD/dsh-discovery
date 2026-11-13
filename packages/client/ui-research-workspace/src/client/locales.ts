@@ -1,0 +1,181 @@
+/** Research workspace copy. The Chinese dictionary is the key-set source. */
+
+/** Locale namespace owned by the research workspace surface. */
+export const NS = 'researchWorkspace' as const
+
+declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface LocaleNamespaceMap {
+    /** Research workspace panel copy. */
+    researchWorkspace: ResearchWorkspaceKey
+  }
+}
+
+export const zh = {
+  panel: '研究',
+  title: '研究 Idea',
+  subtitle: '围绕一个长期研究 Idea 组织问题、知识与假设。',
+  empty: '还没有研究 Idea。创建第一个长期研究方向。',
+  newIdea: '新建 Idea',
+  create: '创建',
+  titlePlaceholder: '研究标题',
+  questionPlaceholder: '核心研究问题',
+  descriptionPlaceholder: '简要描述研究方向',
+  save: '保存',
+  archive: '归档',
+  status: '状态',
+  relations: '关系',
+  timeline: '时间线',
+  noRelations: '还没有关系。',
+  noTimeline: '还没有时间线事件。',
+  loading: '加载中…',
+  error: '操作失败',
+  selectIdea: '选择一个 Idea 查看详情。',
+  targetIdea: '目标 Idea',
+  relationType: '关系类型',
+  note: '备注',
+  addRelation: '添加关系',
+  updated: '更新于',
+  version: '版本',
+  researchQuestion: '研究问题',
+  summary: '当前摘要',
+  objectives: '研究目标',
+  parent: '父 Idea',
+  none: '无',
+  relationRelated: '相关',
+  relationDerived: '派生自',
+  relationMerged: '合并自',
+  relationReferences: '引用',
+  archiveConfirm: '归档后默认列表会隐藏该 Idea；历史仍保留。继续？',
+  showArchived: '显示已归档',
+  refresh: '刷新',
+} satisfies Record<string, string>
+
+/** The research workspace key union. */
+export type ResearchWorkspaceKey = keyof typeof zh
+
+/** English dictionary. */
+export const en = {
+  panel: 'Research',
+  title: 'Research Ideas',
+  subtitle: 'Organize questions, knowledge, and hypotheses around a long-lived research Idea.',
+  empty: 'No research Ideas yet. Create the first long-lived direction.',
+  newIdea: 'New Idea',
+  create: 'Create',
+  titlePlaceholder: 'Research title',
+  questionPlaceholder: 'Core research question',
+  descriptionPlaceholder: 'Briefly describe the direction',
+  save: 'Save',
+  archive: 'Archive',
+  status: 'Status',
+  relations: 'Relations',
+  timeline: 'Timeline',
+  noRelations: 'No relations yet.',
+  noTimeline: 'No timeline events yet.',
+  loading: 'Loading…',
+  error: 'Operation failed',
+  selectIdea: 'Select an Idea to inspect it.',
+  targetIdea: 'Target Idea',
+  relationType: 'Relation type',
+  note: 'Note',
+  addRelation: 'Add relation',
+  updated: 'Updated',
+  version: 'Version',
+  researchQuestion: 'Research question',
+  summary: 'Current summary',
+  objectives: 'Objectives',
+  parent: 'Parent Idea',
+  none: 'None',
+  relationRelated: 'Related',
+  relationDerived: 'Derived from',
+  relationMerged: 'Merged from',
+  relationReferences: 'References',
+  archiveConfirm: 'Archiving hides this Idea from the default list; history is retained. Continue?',
+  showArchived: 'Show archived',
+  refresh: 'Refresh',
+} satisfies Record<ResearchWorkspaceKey, string>
+
+const ja = {
+  panel: '研究', title: '研究アイデア', subtitle: '長期的な研究アイデアを中心に問い、知識、仮説を整理します。',
+  empty: '研究アイデアはまだありません。最初の長期的な研究方向を作成してください。', newIdea: '新しいアイデア',
+  create: '作成', titlePlaceholder: '研究タイトル', questionPlaceholder: '中心的な研究課題',
+  descriptionPlaceholder: '研究方向を簡単に説明', save: '保存', archive: 'アーカイブ', status: '状態',
+  relations: '関係', timeline: 'タイムライン', noRelations: '関係はまだありません。', noTimeline: 'タイムラインイベントはまだありません。',
+  loading: '読み込み中…', error: '操作に失敗しました', selectIdea: 'アイデアを選択して詳細を表示します。',
+  targetIdea: '対象アイデア', relationType: '関係タイプ', note: 'メモ', addRelation: '関係を追加',
+  updated: '更新', version: 'バージョン', researchQuestion: '研究課題', summary: '現在の要約',
+  objectives: '研究目的', parent: '親アイデア', none: 'なし', relationRelated: '関連',
+  relationDerived: '派生元', relationMerged: '統合元', relationReferences: '参照',
+  archiveConfirm: 'アーカイブすると既定の一覧から隠れます。履歴は保持されます。続行しますか？', refresh: '更新', showArchived: 'アーカイブを表示',
+} satisfies Record<ResearchWorkspaceKey, string>
+
+const es = {
+  panel: 'Investigación', title: 'Ideas de investigación', subtitle: 'Organiza preguntas, conocimiento e hipótesis alrededor de una Idea de largo plazo.',
+  empty: 'Aún no hay Ideas. Crea la primera dirección de investigación.', newIdea: 'Nueva Idea',
+  create: 'Crear', titlePlaceholder: 'Título de investigación', questionPlaceholder: 'Pregunta central',
+  descriptionPlaceholder: 'Describe brevemente la dirección', save: 'Guardar', archive: 'Archivar', status: 'Estado',
+  relations: 'Relaciones', timeline: 'Cronología', noRelations: 'Aún no hay relaciones.', noTimeline: 'Aún no hay eventos.',
+  loading: 'Cargando…', error: 'La operación falló', selectIdea: 'Selecciona una Idea para verla.',
+  targetIdea: 'Idea destino', relationType: 'Tipo de relación', note: 'Nota', addRelation: 'Añadir relación',
+  updated: 'Actualizado', version: 'Versión', researchQuestion: 'Pregunta de investigación', summary: 'Resumen actual',
+  objectives: 'Objetivos', parent: 'Idea padre', none: 'Ninguno', relationRelated: 'Relacionada',
+  relationDerived: 'Derivada de', relationMerged: 'Fusionada desde', relationReferences: 'Referencia',
+  archiveConfirm: 'Archivar oculta la Idea de la lista predeterminada; el historial se conserva. ¿Continuar?', refresh: 'Actualizar', showArchived: 'Mostrar archivadas',
+} satisfies Record<ResearchWorkspaceKey, string>
+
+const fr = {
+  panel: 'Recherche', title: 'Idées de recherche', subtitle: 'Organisez questions, connaissances et hypothèses autour d’une Idée durable.',
+  empty: 'Aucune Idée de recherche. Créez la première direction.', newIdea: 'Nouvelle Idée',
+  create: 'Créer', titlePlaceholder: 'Titre de recherche', questionPlaceholder: 'Question centrale',
+  descriptionPlaceholder: 'Décrivez brièvement la direction', save: 'Enregistrer', archive: 'Archiver', status: 'Statut',
+  relations: 'Relations', timeline: 'Chronologie', noRelations: 'Aucune relation.', noTimeline: 'Aucun événement.',
+  loading: 'Chargement…', error: 'L’opération a échoué', selectIdea: 'Sélectionnez une Idée.',
+  targetIdea: 'Idée cible', relationType: 'Type de relation', note: 'Note', addRelation: 'Ajouter une relation',
+  updated: 'Mis à jour', version: 'Version', researchQuestion: 'Question de recherche', summary: 'Résumé actuel',
+  objectives: 'Objectifs', parent: 'Idée parente', none: 'Aucun', relationRelated: 'Liée',
+  relationDerived: 'Dérivée de', relationMerged: 'Fusionnée depuis', relationReferences: 'Référence',
+  archiveConfirm: 'Archiver masque l’Idée de la liste par défaut ; l’historique est conservé. Continuer ?', refresh: 'Actualiser', showArchived: 'Afficher les archivées',
+} satisfies Record<ResearchWorkspaceKey, string>
+
+const de = {
+  panel: 'Forschung', title: 'Forschungsideen', subtitle: 'Organisiere Fragen, Wissen und Hypothesen um eine langfristige Idee.',
+  empty: 'Noch keine Forschungsidee. Erstelle die erste Richtung.', newIdea: 'Neue Idee',
+  create: 'Erstellen', titlePlaceholder: 'Forschungstitel', questionPlaceholder: 'Zentrale Forschungsfrage',
+  descriptionPlaceholder: 'Richtung kurz beschreiben', save: 'Speichern', archive: 'Archivieren', status: 'Status',
+  relations: 'Beziehungen', timeline: 'Zeitleiste', noRelations: 'Noch keine Beziehungen.', noTimeline: 'Noch keine Ereignisse.',
+  loading: 'Wird geladen…', error: 'Vorgang fehlgeschlagen', selectIdea: 'Wähle eine Idee aus.',
+  targetIdea: 'Ziel-Idee', relationType: 'Beziehungstyp', note: 'Notiz', addRelation: 'Beziehung hinzufügen',
+  updated: 'Aktualisiert', version: 'Version', researchQuestion: 'Forschungsfrage', summary: 'Aktuelle Zusammenfassung',
+  objectives: 'Ziele', parent: 'Übergeordnete Idee', none: 'Keine', relationRelated: 'Verwandt',
+  relationDerived: 'Abgeleitet von', relationMerged: 'Zusammengeführt aus', relationReferences: 'Verweist auf',
+  archiveConfirm: 'Archivieren blendet die Idee aus der Standardliste aus; der Verlauf bleibt erhalten. Fortfahren?', refresh: 'Aktualisieren', showArchived: 'Archivierte anzeigen',
+} satisfies Record<ResearchWorkspaceKey, string>
+
+const ru = {
+  panel: 'Исследование', title: 'Идеи исследований', subtitle: 'Организуйте вопросы, знания и гипотезы вокруг долгосрочной Идеи.',
+  empty: 'Идей пока нет. Создайте первое направление.', newIdea: 'Новая идея',
+  create: 'Создать', titlePlaceholder: 'Название исследования', questionPlaceholder: 'Основной вопрос',
+  descriptionPlaceholder: 'Кратко опишите направление', save: 'Сохранить', archive: 'Архивировать', status: 'Статус',
+  relations: 'Связи', timeline: 'Хронология', noRelations: 'Связей пока нет.', noTimeline: 'Событий пока нет.',
+  loading: 'Загрузка…', error: 'Операция не удалась', selectIdea: 'Выберите Идею.',
+  targetIdea: 'Целевая Идея', relationType: 'Тип связи', note: 'Заметка', addRelation: 'Добавить связь',
+  updated: 'Обновлено', version: 'Версия', researchQuestion: 'Исследовательский вопрос', summary: 'Текущее резюме',
+  objectives: 'Цели', parent: 'Родительская Идея', none: 'Нет', relationRelated: 'Связана',
+  relationDerived: 'Производная от', relationMerged: 'Объединена из', relationReferences: 'Ссылается на',
+  archiveConfirm: 'Архивирование скроет Идею из списка; история сохранится. Продолжить?', refresh: 'Обновить', showArchived: 'Показать архивные',
+} satisfies Record<ResearchWorkspaceKey, string>
+
+const pt = {
+  panel: 'Pesquisa', title: 'Ideias de pesquisa', subtitle: 'Organize perguntas, conhecimento e hipóteses em torno de uma Ideia de longo prazo.',
+  empty: 'Ainda não há Ideias. Crie a primeira direção.', newIdea: 'Nova Ideia',
+  create: 'Criar', titlePlaceholder: 'Título da pesquisa', questionPlaceholder: 'Pergunta central',
+  descriptionPlaceholder: 'Descreva brevemente a direção', save: 'Salvar', archive: 'Arquivar', status: 'Status',
+  relations: 'Relações', timeline: 'Linha do tempo', noRelations: 'Ainda não há relações.', noTimeline: 'Ainda não há eventos.',
+  loading: 'Carregando…', error: 'A operação falhou', selectIdea: 'Selecione uma Ideia.',
+  targetIdea: 'Ideia de destino', relationType: 'Tipo de relação', note: 'Nota', addRelation: 'Adicionar relação',
+  updated: 'Atualizado', version: 'Versão', researchQuestion: 'Pergunta de pesquisa', summary: 'Resumo atual',
+  objectives: 'Objetivos', parent: 'Ideia pai', none: 'Nenhum', relationRelated: 'Relacionada',
+  relationDerived: 'Derivada de', relationMerged: 'Mesclada de', relationReferences: 'Referencia',
+  archiveConfirm: 'Arquivar oculta a Ideia da lista padrão; o histórico é mantido. Continuar?', refresh: 'Atualizar', showArchived: 'Mostrar arquivadas',
+} satisfies Record<ResearchWorkspaceKey, string>
+
+export { ja, es, fr, de, ru, pt }

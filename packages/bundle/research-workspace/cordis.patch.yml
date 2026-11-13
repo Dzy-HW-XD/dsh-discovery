@@ -1,0 +1,14 @@
+# Opt-in Research Workspace bundle. It adds the Idea-centric Host service,
+# Remote/tool surface, and Web panel on top of dsh-base; it does not replace
+# any native Session, Agent Loop, Conversation, or persistence row.
+- insert:
+    - id: research-core
+      name: '@deepseek-ai/dsh-research-core'
+      config:
+        root: !!js dshHomePath('research')
+
+    - id: research-tools
+      name: '@deepseek-ai/dsh-research-tools'
+
+    - id: ui-research-workspace
+      name: '@deepseek-ai/dsh-client-ui-research-workspace'
