@@ -12,10 +12,10 @@ import { DatabaseSync } from 'node:sqlite'
 import { ResearchError } from './errors.ts'
 
 /** Physical database layout version, independent of business migrations. */
-export const RESEARCH_DATABASE_LAYOUT_VERSION = 6
+export const RESEARCH_DATABASE_LAYOUT_VERSION = 7
 
 /** Business schema version written by the latest migration. */
-export const RESEARCH_SCHEMA_VERSION = 6
+export const RESEARCH_SCHEMA_VERSION = 7
 
 const MIGRATION_1 = `
 CREATE TABLE research_ideas (
@@ -697,6 +697,42 @@ ALTER TABLE research_memory_sources ADD COLUMN source_role TEXT NOT NULL DEFAULT
 CREATE INDEX idx_memory_sources_summary ON research_memory_sources(summary_id);
 `
 
+
+const MIGRATION_7 = `
+CREATE VIRTUAL TABLE research_memory_fts USING fts5(
+  memory_id UNINDEXED,
+  idea_id UNINDEXED,
+  title,
+  content,
+  tokenize='trigram'
+);
+
+INSERT INTO research_memory_fts (memory_id, idea_id, title, content)
+SELECT id, idea_id, title, content FROM research_memory_records;
+
+CREATE TRIGGER research_memory_fts_insert AFTER INSERT ON research_memory_records BEGIN
+  INSERT INTO research_memory_fts (memory_id, idea_id, title, content)
+  VALUES (new.id, new.idea_id, new.title, new.content);
+END;
+
+CREATE TRIGGER research_memory_fts_update AFTER UPDATE OF title, content ON research_memory_records BEGIN
+  DELETE FROM research_memory_fts WHERE memory_id = old.id;
+  INSERT INTO research_memory_fts (memory_id, idea_id, title, content)
+  VALUES (new.id, new.idea_id, new.title, new.content);
+END;
+
+CREATE TRIGGER research_memory_fts_delete AFTER DELETE ON research_memory_records BEGIN
+  DELETE FROM research_memory_fts WHERE memory_id = old.id;
+END;
+
+ALTER TABLE research_memory_selections ADD COLUMN memory_version INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE research_memory_selections ADD COLUMN retrieval_score REAL NOT NULL DEFAULT 0;
+ALTER TABLE research_memory_selections ADD COLUMN injection_status TEXT NOT NULL DEFAULT 'injected'
+  CHECK (injection_status IN ('selected','injected','failed'));
+ALTER TABLE research_memory_selections ADD COLUMN injection_location TEXT NOT NULL DEFAULT 'unknown'
+  CHECK (injection_location IN ('system-prompt','agent-pre-step','unknown'));
+`
+
 /** One open research database. */
 export class ResearchDatabase {
   private readonly database: DatabaseSync
@@ -774,6 +810,7 @@ export class ResearchDatabase {
       { version: 4, name: 'memory', sql: MIGRATION_4 },
       { version: 5, name: 'session-summaries', sql: MIGRATION_5 },
       { version: 6, name: 'memory-provenance', sql: MIGRATION_6 },
+      { version: 7, name: 'memory-retrieval', sql: MIGRATION_7 },
     ]) {
       const applied = this.database
         .prepare('SELECT version FROM research_schema_migrations WHERE version = ?')

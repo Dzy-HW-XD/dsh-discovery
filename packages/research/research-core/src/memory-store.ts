@@ -9,7 +9,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { ResearchDatabase } from './database.ts'
 import { ResearchError } from './errors.ts'
-import { optionalText } from './rows.ts'
+import { optionalText, text, type SqlRow } from './rows.ts'
 import { ResearchMemoryRepository } from './memory-repository.ts'
 import {
   MEMORY_CHANGE_SOURCES,
@@ -28,6 +28,8 @@ import {
   type MemoryRelation,
   type MemoryRelationInput,
   type MemorySelection,
+  type MemorySearchHit,
+  type MemorySearchOptions,
   type MemorySource,
   type MemorySourceInput,
   type MemoryType,
@@ -437,6 +439,86 @@ export class ResearchMemoryStore {
   listSelections(ideaId: IdeaIdType, sessionId?: string): MemorySelection[] {
     this.assertIdea(ideaId)
     return this.repository.listSelections(ideaId, sessionId)
+  }
+
+  /**
+   * Search memories by title/content with FTS5 trigram and a LIKE fallback for
+   * queries shorter than three characters. Results stay inside one Idea.
+   * @param ideaId - owning Idea.
+   * @param query - raw user query.
+   * @param options - optional type/status filters and limit.
+   * @returns hydrated hits ordered by text relevance.
+   */
+  searchMemories(ideaId: IdeaIdType, query: string, options: MemorySearchOptions = {}): MemorySearchHit[] {
+    this.assertIdea(ideaId)
+    const normalized = query.trim()
+    if (normalized === '') return []
+    const statuses = options.lifecycleStatuses ?? ['active', 'candidate']
+    const limit = Math.max(1, Math.min(options.limit ?? 20, 100))
+    const statusSql = statuses.map(() => '?').join(',')
+    const typeSql = options.memoryTypes === undefined || options.memoryTypes.length === 0
+      ? ''
+      : ` AND m.memory_type IN (${options.memoryTypes.map(() => '?').join(',')})`
+    const values: (string | number)[] = [ideaId, ...statuses, ...options.memoryTypes ?? []]
+    if (normalized.length < 3) return this.likeSearch(ideaId, normalized, statusSql, typeSql, values, limit)
+    try {
+      const terms = normalized.split(/\s+/u).filter(term => term.length >= 3)
+      const match = normalized.includes(' OR ') || normalized.includes('"')
+        ? normalized
+        : terms.length > 1
+          ? terms.map(term => `"${term.replaceAll('"', '""')}"`).join(' OR ')
+          : `"${normalized.replaceAll('"', '""')}"`
+      const rows = this.database.connection.prepare(`
+        SELECT m.id, bm25(research_memory_fts) AS rank
+        FROM research_memory_fts f
+        JOIN research_memory_records m ON m.id = f.memory_id
+        WHERE f.idea_id = ? AND research_memory_fts MATCH ? AND m.lifecycle_status IN (${statusSql})${typeSql}
+        ORDER BY rank ASC, m.updated_at DESC, m.id ASC
+        LIMIT ?
+      `).all(ideaId, match, ...statuses, ...options.memoryTypes ?? [], limit) as SqlRow[]
+      return rows.flatMap((row) => {
+        const memory = this.repository.get(ideaId, text(row, 'id'))
+        if (memory === undefined) return []
+        const rank = typeof row['rank'] === 'number' ? row['rank'] : 0
+        return [{ memory: this.hydrate(memory), textRelevance: Math.max(0.05, 1 / (1 + Math.abs(rank))) }]
+      })
+    } catch {
+      return this.likeSearch(ideaId, normalized, statusSql, typeSql, values, limit)
+    }
+  }
+
+  private likeSearch(
+    ideaId: IdeaIdType,
+    query: string,
+    statusSql: string,
+    typeSql: string,
+    values: (string | number)[],
+    limit: number,
+  ): MemorySearchHit[] {
+    const escaped = query.replace(/[\\%_]/gu, match => `\\${match}`)
+    const rows = this.database.connection.prepare(`
+      SELECT m.id FROM research_memory_records m
+      WHERE m.idea_id = ? AND m.lifecycle_status IN (${statusSql})${typeSql}
+        AND (m.title LIKE ? ESCAPE '\\' OR m.content LIKE ? ESCAPE '\\')
+      ORDER BY m.updated_at DESC, m.id ASC LIMIT ?
+    `).all(...values, `%${escaped}%`, `%${escaped}%`, limit) as SqlRow[]
+    return rows.flatMap((row) => {
+      const memory = this.repository.get(ideaId, text(row, 'id'))
+      return memory === undefined ? [] : [{ memory: this.hydrate(memory), textRelevance: 0.55 }]
+    })
+  }
+
+  /**
+   * Rebuild the FTS index from the authoritative memory rows.
+   */
+  rebuildSearchIndex(): void {
+    this.database.transaction(() => {
+      this.database.connection.prepare('DELETE FROM research_memory_fts').run()
+      this.database.connection.prepare(`
+        INSERT INTO research_memory_fts (memory_id, idea_id, title, content)
+        SELECT id, idea_id, title, content FROM research_memory_records
+      `).run()
+    })
   }
 
   /**

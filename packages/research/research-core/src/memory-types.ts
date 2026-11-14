@@ -222,6 +222,10 @@ export interface MemorySelection {
   readonly layer: MemorySelectionLayer
   readonly reason: string
   readonly tokenEstimate: number
+  readonly memoryVersion: number
+  readonly retrievalScore: number
+  readonly injectionStatus: 'selected' | 'injected' | 'failed'
+  readonly injectionLocation: 'system-prompt' | 'agent-pre-step' | 'unknown'
   readonly createdAt: number
 }
 
@@ -321,6 +325,23 @@ export interface RecordMemorySelectionInput {
   readonly layer: MemorySelectionLayer
   readonly reason: string
   readonly tokenEstimate: number
+  readonly memoryVersion?: number
+  readonly retrievalScore?: number
+  readonly injectionStatus?: 'selected' | 'injected' | 'failed'
+  readonly injectionLocation?: 'system-prompt' | 'agent-pre-step' | 'unknown'
+}
+
+/** One FTS/LIKE memory hit. */
+export interface MemorySearchHit {
+  readonly memory: ResearchMemory
+  readonly textRelevance: number
+}
+
+/** Search filters for memory retrieval. */
+export interface MemorySearchOptions {
+  readonly memoryTypes?: readonly MemoryType[]
+  readonly lifecycleStatuses?: readonly MemoryLifecycleStatus[]
+  readonly limit?: number
 }
 
 /** Counts used by the Memory workspace. */

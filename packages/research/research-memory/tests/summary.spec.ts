@@ -213,6 +213,8 @@ describe('summary coordinator lifecycle', () => {
       INSERT INTO research_schema_migrations VALUES (3, 'artifacts', 'legacy', 3);
       INSERT INTO research_schema_migrations VALUES (4, 'memory', 'legacy', 4);
       CREATE TABLE research_memory_sources (id TEXT PRIMARY KEY) STRICT;
+      CREATE TABLE research_memory_records (id TEXT PRIMARY KEY, idea_id TEXT NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL) STRICT;
+      CREATE TABLE research_memory_selections (id TEXT PRIMARY KEY) STRICT;
       CREATE TABLE research_session_summaries (
         id TEXT PRIMARY KEY,
         session_id TEXT NOT NULL,
@@ -233,7 +235,7 @@ describe('summary coordinator lifecycle', () => {
     legacy.close()
     const upgraded = new ResearchDatabase(root)
     expect(upgraded.connection.prepare('SELECT version FROM research_schema_migrations ORDER BY version').all()
-      .map(row => row['version'])).toEqual([1, 2, 3, 4, 5, 6])
+      .map(row => row['version'])).toEqual([1, 2, 3, 4, 5, 6, 7])
     const columns = upgraded.connection.prepare('PRAGMA table_info(research_session_summaries)').all().map(row => row['name'])
     expect(columns).toEqual(expect.arrayContaining([
       'objective', 'key_findings_json', 'generation_status', 'idempotency_key', 'updated_at',

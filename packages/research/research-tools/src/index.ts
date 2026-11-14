@@ -6,7 +6,9 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import { ExtractorCoordinator, SummaryCoordinator } from '@deepseek-ai/dsh-research-memory'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import type {} from '@deepseek-ai/dsh-token-meter'
+import { ExtractorCoordinator, MemoryContextService, SummaryCoordinator } from '@deepseek-ai/dsh-research-memory'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-query'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
@@ -256,7 +258,17 @@ export default class ResearchController extends TypertRemoteService {
   constructor(ctx: Context) {
     super(ctx, 'researchController', { namespace: 'research' })
     const core = ctx.researchCore
-    this.composition = new ResearchComposition(core)
+    const tokenMeter = ctx.get('tokenMeter')
+    const memoryContext = new MemoryContextService({
+      core,
+      ...tokenMeter === undefined ? {} : {
+        estimateTokens: (text: string) => tokenMeter.estimateMessage(createUserMessage({
+          content: [{ type: 'text', text }],
+          source: { kind: 'user' },
+        })),
+      },
+    })
+    this.composition = new ResearchComposition(core, memoryContext)
     this.creator = new ResearchSessionCreator(ctx, core, this.composition)
     core.events.setSessionLogReader(ctx.get('sessionQuery'))
     const query = ctx.get('sessionQuery')

@@ -6,6 +6,8 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import type { MemoryContextService } from '@deepseek-ai/dsh-research-memory'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-system-prompt'
@@ -26,6 +28,22 @@ Never present an inferred claim as a reported fact. Cite source ids when they ex
 The Research timeline is append-only; archival is not deletion.`
 
 const MAX_BRIEF_LENGTH = 4000
+
+declare module '@deepseek-ai/dsh-llm' {
+  interface MessageSourceMap {
+    /** Synthetic Research Memory context injected at the first step of a turn. */
+    'research-memory': { kind: 'research-memory' }
+  }
+}
+
+function userText(message: { source?: { kind?: string }; content: readonly { type: string; text?: string }[] }): string {
+  if (message.source?.kind !== 'user') return ''
+  return message.content
+    .filter((block): block is { type: 'text'; text: string } => block.type === 'text' && typeof block.text === 'string')
+    .map(block => block.text)
+    .join('\n')
+    .trim()
+}
 
 interface Installation {
   readonly ideaId: string
@@ -122,7 +140,10 @@ export class ResearchComposition {
   /**
    * @param core - research core service.
    */
-  constructor(private readonly core: ResearchCore) {}
+  constructor(
+    private readonly core: ResearchCore,
+    private readonly memoryContext?: MemoryContextService,
+  ) {}
 
   /**
    * Install the Research protocol for one binding.
@@ -157,6 +178,48 @@ export class ResearchComposition {
     try {
       disposers.push(agentCtx.systemPrompt.section({ name: 'research:protocol', order: 500, text: PROTOCOL }))
       disposers.push(agentCtx.systemPrompt.context({ name: 'research:idea-brief', order: 500, required: true, text: brief }))
+      if (this.memoryContext !== undefined) {
+        disposers.push(agentCtx.systemPrompt.context({
+          name: 'research:core-memory',
+          order: 501,
+          required: true,
+          text: () => {
+            try {
+              return this.memoryContext?.coreContext(idea.id) ?? ''
+            } catch (error: unknown) {
+              agentCtx.logger.warn(`research: core memory assembly failed: ${String(error)}`)
+              return ''
+            }
+          },
+        }))
+        disposers.push(agentCtx.on('agent/pre-step', async (payload, next) => {
+          if (payload.step !== 1 || this.memoryContext === undefined) return next()
+          const query = payload.messages.map(message => userText(message)).filter(text => text !== '').join('\n').trim()
+          if (query === '') return next()
+          const decision = await next()
+          if (decision.kind !== 'enter') return decision
+          try {
+            const built = this.memoryContext.buildTurn({
+              ideaId: idea.id,
+              sessionId: agent.id,
+              query,
+              turn: payload.turn,
+              step: payload.step,
+            })
+            if (built.relevantVisibleText === '') return decision
+            return {
+              ...decision,
+              messages: [...decision.messages, createUserMessage({
+                content: [{ type: 'text', text: built.relevantVisibleText }],
+                source: { kind: 'research-memory' },
+              })],
+            }
+          } catch (error: unknown) {
+            agentCtx.logger.warn(`research: relevant memory injection failed: ${String(error)}`)
+            return decision
+          }
+        }))
+      }
       disposers.push(agentCtx.tools.register(researchSessionTool(this.core, agent.id)))
       for (const tool of researchArtifactTools(this.core, agent.id)) {
         disposers.push(agentCtx.tools.register(tool))

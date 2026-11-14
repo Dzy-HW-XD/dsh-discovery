@@ -16,11 +16,14 @@ const roots: string[] = []
 const contexts: Context[] = []
 
 class ScriptedAdapter extends LlmAdapter {
+  readonly requests: GenerateOptions[] = []
+
   override resolveModel(provider: string, model: string): Promise<LlmResolvedModelInfo> {
     return Promise.resolve({ provider, id: model, name: model })
   }
 
   override async * stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
+    this.requests.push(options)
     const text = 'Recorded a mock research answer.'
     yield { type: 'block-start', index: 0, blockType: 'text' }
     for (const character of text) {
@@ -33,13 +36,14 @@ class ScriptedAdapter extends LlmAdapter {
   }
 }
 
-async function bench(): Promise<{ ctx: Context; controller: ResearchController }> {
+async function bench(): Promise<{ ctx: Context; controller: ResearchController; adapter: ScriptedAdapter }> {
   const root = mkdtempSync(join(tmpdir(), 'dsh-summary-lifecycle-'))
   roots.push(root)
   const ctx = new Context()
   contexts.push(ctx)
   await mountAgentLoopTestDependencies(ctx)
-  ctx.llm.registerAdapter(['mock'], new ScriptedAdapter())
+  const adapter = new ScriptedAdapter()
+  ctx.llm.registerAdapter(['mock'], adapter)
   ctx.provide('agentDefaultModel', {
     currentSelection: () => ({ provider: 'mock', model: 'mock' }),
   } as never)
@@ -49,7 +53,7 @@ async function bench(): Promise<{ ctx: Context; controller: ResearchController }
   await ctx.plugin(ResearchController)
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.researchController.ready
-  return { ctx, controller: ctx.researchController }
+  return { ctx, controller: ctx.researchController, adapter }
 }
 
 afterEach(async () => {
@@ -62,7 +66,7 @@ afterEach(async () => {
 
 describe('Summary lifecycle with a real Agent Session', () => {
   it('summarizes a completed turn through the Remote and real Session log', async () => {
-    const { ctx, controller } = await bench()
+    const { ctx, controller, adapter } = await bench()
     const idea = controller.createIdea({
       title: 'Lifecycle Summary',
       researchQuestion: 'Does the turn become a structured summary?',
@@ -98,5 +102,37 @@ describe('Summary lifecycle with a real Agent Session', () => {
     expect(ctx.researchCore.memory.listMemories(IdeaId(idea.id))[0]).toMatchObject({
       memoryType: 'fact', lifecycleStatus: 'candidate', epistemicStatus: 'unverified',
     })
+    agent!.followup(createUserMessage({
+      content: [{ type: 'text', text: 'What did we find about the mock finding?' }],
+      source: { kind: 'user' },
+    }))
+    await agent!.whenIdle()
+    const latest = adapter.requests.at(-1)
+    expect(latest).toBeDefined()
+    expect(JSON.stringify(latest!.messages)).toContain('Relevant research memories')
+    expect(JSON.stringify(latest!.messages)).toContain('Mock finding from the lifecycle test.')
+    const selections = ctx.researchCore.memory.listSelections(IdeaId(idea.id), binding.sessionId)
+    expect(selections.some(selection => selection.layer === 'relevant' && selection.injectionStatus === 'injected')).toBe(true)
+    ctx.researchCore.memory.createMemory({
+      ideaId: IdeaId(idea.id),
+      memoryType: 'goal',
+      title: 'GPU SDC goal',
+      content: 'Study GPU SDC propagation across model layers.',
+      epistemicStatus: 'verified',
+      lifecycleStatus: 'active',
+      sourceSessionId: binding.sessionId,
+      sources: [{ sessionId: binding.sessionId, eventSeq: 1 }],
+    })
+    const second = await controller.createSession({ ideaId: idea.id, cwd: tmpdir() })
+    const secondAgent = ctx.agents.get(SessionId(second.sessionId))
+    secondAgent!.followup(createUserMessage({
+      content: [{ type: 'text', text: 'Suggest an unrelated cooking recipe.' }],
+      source: { kind: 'user' },
+    }))
+    await secondAgent!.whenIdle()
+    expect(JSON.stringify(adapter.requests.at(-1)?.messages)).toContain('Core memory')
+    expect(JSON.stringify(adapter.requests.at(-1)?.messages)).not.toContain('Relevant research memories')
+    expect(ctx.researchCore.memory.listSelections(IdeaId(idea.id), second.sessionId)
+      .some(selection => selection.layer === 'core' && selection.injectionLocation === 'system-prompt')).toBe(true)
   })
 })

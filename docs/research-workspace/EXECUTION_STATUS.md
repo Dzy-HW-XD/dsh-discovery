@@ -1,7 +1,7 @@
 # DSH Research Workspace — Execution Status
 
 - 最后更新：2026-11-14
-- 当前 Batch：Batch C / Phase 5.4（Ready to Start）
+- 当前 Batch：Batch C / Phase 5.5（Ready to Start）
 - 已完成 Batch：Batch A（Phase 1–2）、Batch B（Phase 3–4）
 - 开发授权：Phase 1–9 整体授权
 - 执行模式：Batch 验收门禁 + 自动推进
@@ -30,11 +30,12 @@
 | Batch B | Completed | Passed（见 `reports/BATCH_B_COMPLETION.md`） |
 | Phase 3 | Completed | Passed |
 | Phase 4 | Completed | Passed |
-| Batch C | In Progress | Phase 5.3 completed |
+| Batch C | In Progress | Phase 5.4 completed |
 | Phase 5.1 | Completed | Passed |
 | Phase 5.2 | Completed | Passed |
 | Phase 5.3 | Completed | Passed |
-| Phase 5.4 | Ready to Start | Pending |
+| Phase 5.4 | Completed | Passed |
+| Phase 5.5 | Ready to Start | Pending |
 | Phase 6 | Pending | Pending |
 | Batch D | Pending | Pending |
 | Phase 7–8 | Pending | Pending |
@@ -51,6 +52,7 @@
 | v4 | Memory records/versions/sources/relations/conflicts/selections；epistemic 与 lifecycle 分列 | Applied（Phase 5.1） |
 | v5 | Session Summary 结构化列、generation 状态、幂等键 | Applied（Phase 5.2） |
 | v6 | Memory source 的 Summary/version/job/entity-version/role provenance 列 | Applied（Phase 5.3） |
+| v7 | Memory FTS5 trigram 索引/触发器；Selection version/score/status/location | Applied（Phase 5.4） |
 
 Migration v1→v2 升级测试通过；重复打开幂等。
 
@@ -81,8 +83,9 @@ Migration v1→v2 升级测试通过；重复打开幂等。
 - Phase 5.1 Memory Store 已完成，报告为 `reports/PHASE_5_1_MEMORY_STORE.md`；Migration v4 已应用。
 - Phase 5.2 Session Summary Engine 已完成，报告为 `reports/PHASE_5_2_SUMMARY_ENGINE.md`；Migration v5 已应用。
 - Phase 5.3 Memory Extractor 已完成，报告为 `reports/PHASE_5_3_MEMORY_EXTRACTOR.md`；Migration v6 已应用。
-- 下一步 Phase 5.4 Retrieval，需等待确认。
-- Phase 5.2 门禁已通过：14 个测试文件 / 84 个测试，typecheck、Host/Client build、build:check、lint、hygiene（23/23）。
+- Phase 5.4 Memory Retrieval & Context Injection 已完成，报告为 `reports/PHASE_5_4_MEMORY_RETRIEVAL.md`；Migration v7 已应用。
+- 下一步 Phase 5.5 Review/Promotion，需等待确认。
+- Phase 5.2 门禁已通过：15 个测试文件 / 91 个测试，typecheck、Host/Client build、build:check、lint、hygiene（23/23）。
 
 ## 6. 验收证据
 
@@ -91,7 +94,7 @@ corepack pnpm exec vitest run \
   packages/research/research-core/tests \
   packages/research/research-tools/tests \
   packages/client/ui-research-workspace/tests
-# 14 files, 84 tests passed
+# 15 files, 91 tests passed
 ```
 
 ```sh
@@ -125,6 +128,6 @@ corepack pnpm run verify-tool-catalog
 
 ## 8. 下一步
 
-1. Phase 5.3 已本地提交；GitHub 推送因网络 TLS 失败待重试。
-2. 等待 Phase 5.4 授权。
-3. 确认后按 5.4 → 5.8 实施；Phase 5 通过验收后进入 Phase 6 / Batch D。
+1. Phase 5.4 提交后将 Phase 5.3/5.4 一并推送；GitHub TLS 失败时保留本地提交。
+2. 等待 Phase 5.5 授权。
+3. 确认后按 5.5 → 5.8 实施；Phase 5 通过验收后进入 Phase 6 / Batch D。

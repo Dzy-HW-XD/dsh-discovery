@@ -92,6 +92,7 @@ export default class ResearchCore extends Service {
     this.events = new ResearchSessionEventProcessor(ctx, this.database, this.sessionBindings, this.outbox)
     this.artifacts = new ResearchArtifactStore(this.database)
     this.memory = new ResearchMemoryStore(this.database)
+    this.memory.rebuildSearchIndex()
     this.summaries = new ResearchSummaryStore(this.database)
     ctx.effect(() => () => {
       this.events.dispose()

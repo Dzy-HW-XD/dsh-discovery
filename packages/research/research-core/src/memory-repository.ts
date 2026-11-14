@@ -153,6 +153,10 @@ function mapSelection(row: SqlRow): MemorySelection {
     layer: text(row, 'layer') as MemorySelection['layer'],
     reason: text(row, 'reason'),
     tokenEstimate: integer(row, 'token_estimate'),
+    memoryVersion: integer(row, 'memory_version'),
+    retrievalScore: real(row, 'retrieval_score'),
+    injectionStatus: text(row, 'injection_status') as MemorySelection['injectionStatus'],
+    injectionLocation: text(row, 'injection_location') as MemorySelection['injectionLocation'],
     createdAt: integer(row, 'created_at'),
   }
 }
@@ -517,10 +521,13 @@ export class ResearchMemoryRepository {
   insertSelection(id: string, input: RecordMemorySelectionInput, now: number): MemorySelection {
     this.database.connection.prepare(`
       INSERT OR IGNORE INTO research_memory_selections (
-        id, session_id, idea_id, turn, step, memory_id, rank, layer, reason, token_estimate, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, session_id, idea_id, turn, step, memory_id, rank, layer, reason, token_estimate,
+        memory_version, retrieval_score, injection_status, injection_location, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(id, input.sessionId, input.ideaId, input.turn, input.step, input.memoryId,
-      input.rank, input.layer, input.reason, input.tokenEstimate, now)
+      input.rank, input.layer, input.reason, input.tokenEstimate, input.memoryVersion ?? 1,
+      input.retrievalScore ?? 0, input.injectionStatus ?? 'injected',
+      input.injectionLocation ?? 'unknown', now)
     const row = this.database.connection.prepare(`
       SELECT * FROM research_memory_selections
       WHERE session_id = ? AND turn = ? AND step = ? AND memory_id = ?
