@@ -79,6 +79,10 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'research/entity-not-found': Record<string, string | number | boolean | null>
     'research/artifact-hash-mismatch': Record<string, string | number | boolean | null>
     'research/duplicate': Record<string, string | number | boolean | null>
+    'research/memory-not-found': Record<string, string | number | boolean | null>
+    'research/memory-conflict-not-found': Record<string, string | number | boolean | null>
+    'research/memory-source-invalid': Record<string, string | number | boolean | null>
+    'research/memory-transition-invalid': Record<string, string | number | boolean | null>
     'research/version-conflict': Record<string, string | number | boolean | null>
     'research/invalid-transition': Record<string, string | number | boolean | null>
     'research/invalid-input': Record<string, string | number | boolean | null>

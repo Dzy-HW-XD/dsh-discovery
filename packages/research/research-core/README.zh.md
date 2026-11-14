@@ -58,6 +58,10 @@ kind: "package-reference"
 | `artifacts.createQuestion` / `createGap` / `createHypothesis` | 记录结构化研究产出 |
 | `artifacts.createArtifact` / `verifyArtifact` | 原子写入文件并校验 hash |
 | `artifacts.recordSessionSummary` | 追加不可变 Session Summary 快照 |
+| `memory.createMemory` / `updateMemory` | 写入带来源与生命周期状态的版本化 Memory |
+| `memory.addSource` / `addRelation` | 追加来源或关系，不覆盖历史 |
+| `memory.createConflict` / `resolveConflict` | 保留相互矛盾的 Memory 供审核 |
+| `memory.recordSelection` | 记录一次召回注入，用于审计与 token 统计 |
 
 ### 生命周期
 
@@ -77,6 +81,8 @@ kind: "package-reference"
 
 Migration v3 增加 artifact 表。Claim 与 Hypothesis 更新追加版本快照，而不是覆盖历史。Artifact 内容先写入临时文件、再 rename、计算 hash，最后才提交数据库；文件缺失或被篡改时，数据库行仍是权威。
 
+Migration v4 增加 Phase 5 Memory 表。Epistemic status 与 lifecycle status 分列；每次更新追加 Memory 版本，并保留来源、关系与变更元数据。Memory 按 Idea 隔离，并记录 Session/实体 provenance。Selection 行记录被注入的 Memory、层级、排序与 token 估算。
+
 `ResearchIdea.workspacePath` 与 `ResearchIdea.lastSessionId` 由 Phase 2 迁移持久化，存在时返回。
 
 `ResearchIdea.workspacePath` 和 `ResearchIdea.lastSessionId` 仅为预留类型字段；Phase 1 从不持久化或返回它们。
@@ -87,7 +93,8 @@ Migration v3 增加 artifact 表。Claim 与 Hypothesis 更新追加版本快照
 
 ## 已知限制与延后工作
 
-- Phase 3 没有记忆记录、Context 快照、Job 或 Hypothesis review；这些随后续阶段到来。
+- Phase 3 没有 Context 快照、Job 或 Hypothesis review；这些随后续阶段到来。
+- Phase 5.1 只实现 Memory Store；Summary 生成、Extractor、Retrieval、FTS、Review UI 与 Context 注入属于后续子阶段。
 - Artifact 文件位于 `<root>/artifacts`；移动或截断文件会把行标记为 `missing` 或 `failed`，而不会删除记录。
 - 搜索使用 SQL `LIKE`，不是 FTS5；在记忆检索存在前，Idea 搜索面刻意保持很小。
 - SQLite 调用在 Host 线程同步执行；这对小型 Idea 与 Session 元数据写入可接受，不适合批量导入。

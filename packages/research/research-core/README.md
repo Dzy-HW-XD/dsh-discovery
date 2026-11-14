@@ -56,6 +56,10 @@ The service exposes:
 | `artifacts.createQuestion` / `createGap` / `createHypothesis` | Record structured research outputs |
 | `artifacts.createArtifact` / `verifyArtifact` | Store a file atomically and verify its hash |
 | `artifacts.recordSessionSummary` | Append an immutable Session Summary snapshot |
+| `memory.createMemory` / `updateMemory` | Write a versioned memory with sources and lifecycle state |
+| `memory.addSource` / `addRelation` | Attach provenance or a relation without replacing history |
+| `memory.createConflict` / `resolveConflict` | Preserve contradictory memories for review |
+| `memory.recordSelection` | Record one retrieval injection for audit and token accounting |
 
 ### Lifecycle
 
@@ -73,13 +77,16 @@ The database uses WAL, foreign keys, a five-second busy timeout, and one synchro
 
 Migration v3 adds the artifact tables. Claim and Hypothesis updates append version snapshots instead of overwriting history. Artifact content is written to a temporary file, renamed into place, hashed, and only then committed to the database; the row remains authoritative when a file is missing or tampered.
 
+Migration v4 adds the Phase 5 memory tables. Epistemic status and lifecycle status are separate columns; every update appends a memory version and preserves sources, relations, and change metadata. Memory rows are scoped by Idea and carry Session/entity provenance. Selection rows record which memories were injected with their layer, rank, and token estimate.
+
 `ResearchIdea.workspacePath` and `ResearchIdea.lastSessionId` are persisted by the Phase 2 migration and returned when present.
 
 -----
 
 ## Known Limitations and Deferred Work
 
-- Phase 3 has no memory records, context snapshots, jobs, or hypothesis reviews; those arrive with later phases.
+- Phase 3 has no context snapshots, jobs, or hypothesis reviews; those arrive with later phases.
+- Phase 5.1 adds the memory store only; summary generation, extraction, retrieval, FTS, review UI, and context injection belong to later sub-phases.
 - Artifact files live under `<root>/artifacts`; moving or truncating them marks the row `missing` or `failed` instead of deleting it.
 - Search uses SQL `LIKE`, not FTS5; the Idea search surface is intentionally small until memory retrieval exists.
 - SQLite calls are synchronous on the Host thread; this is acceptable for small Idea and Session metadata writes, not bulk imports.

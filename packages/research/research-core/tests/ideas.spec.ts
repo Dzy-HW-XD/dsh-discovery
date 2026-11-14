@@ -196,10 +196,11 @@ describe('research-core ideas', () => {
     const rows = reopened.connection
       .prepare('SELECT version, name FROM research_schema_migrations ORDER BY version')
       .all()
-    expect(rows).toHaveLength(3)
+    expect(rows).toHaveLength(4)
     expect(rows[0]).toMatchObject({ version: 1, name: 'ideas' })
     expect(rows[1]).toMatchObject({ version: 2, name: 'sessions' })
     expect(rows[2]).toMatchObject({ version: 3, name: 'artifacts' })
+    expect(rows[3]).toMatchObject({ version: 4, name: 'memory' })
     expect(reopened.connection.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('research_sessions','research_session_idea_links','research_session_checkpoints','research_outbox') ORDER BY name",
     ).all().map(row => row['name'])).toEqual([

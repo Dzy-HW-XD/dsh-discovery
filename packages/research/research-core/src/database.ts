@@ -12,10 +12,10 @@ import { DatabaseSync } from 'node:sqlite'
 import { ResearchError } from './errors.ts'
 
 /** Physical database layout version, independent of business migrations. */
-export const RESEARCH_DATABASE_LAYOUT_VERSION = 3
+export const RESEARCH_DATABASE_LAYOUT_VERSION = 4
 
 /** Business schema version written by the latest migration. */
-export const RESEARCH_SCHEMA_VERSION = 3
+export const RESEARCH_SCHEMA_VERSION = 4
 
 const MIGRATION_1 = `
 CREATE TABLE research_ideas (
@@ -528,6 +528,138 @@ CREATE TABLE research_session_summaries (
 CREATE INDEX idx_summaries_session ON research_session_summaries(session_id, created_at DESC);
 `
 
+
+const MIGRATION_4 = `
+CREATE TABLE research_memory_records (
+  id                    TEXT PRIMARY KEY,
+  idea_id               TEXT NOT NULL REFERENCES research_ideas(id) ON DELETE RESTRICT,
+  memory_type           TEXT NOT NULL CHECK (memory_type IN (
+                          'goal','fact','finding','hypothesis','decision','constraint',
+                          'failure','open_question','strategy','preference')),
+  title                 TEXT NOT NULL,
+  content               TEXT NOT NULL,
+  structured_json       TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(structured_json)),
+  epistemic_status      TEXT NOT NULL DEFAULT 'inferred'
+                        CHECK (epistemic_status IN ('verified','supported','inferred','unverified','disputed','refuted')),
+  lifecycle_status      TEXT NOT NULL DEFAULT 'candidate'
+                        CHECK (lifecycle_status IN ('candidate','active','superseded','rejected','archived')),
+  confidence            REAL NOT NULL DEFAULT 0.5 CHECK (confidence >= 0 AND confidence <= 1),
+  source_session_id     TEXT REFERENCES research_sessions(session_id) ON DELETE RESTRICT,
+  source_event_seqs_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(source_event_seqs_json)),
+  source_ids_json       TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(source_ids_json)),
+  origin_tool_call_id   TEXT,
+  content_hash          TEXT NOT NULL,
+  version               INTEGER NOT NULL DEFAULT 1,
+  supersedes_id         TEXT REFERENCES research_memory_records(id) ON DELETE RESTRICT,
+  promoted_at           INTEGER,
+  archived_at           INTEGER,
+  last_used_at          INTEGER,
+  use_count             INTEGER NOT NULL DEFAULT 0,
+  created_at            INTEGER NOT NULL,
+  updated_at            INTEGER NOT NULL,
+  UNIQUE (idea_id, memory_type, content_hash)
+) STRICT;
+
+CREATE INDEX idx_memory_idea_status
+  ON research_memory_records(idea_id, lifecycle_status, memory_type, updated_at DESC);
+CREATE INDEX idx_memory_session ON research_memory_records(source_session_id);
+CREATE INDEX idx_memory_hash ON research_memory_records(content_hash);
+
+CREATE TABLE research_memory_versions (
+  id                TEXT PRIMARY KEY,
+  memory_id         TEXT NOT NULL REFERENCES research_memory_records(id) ON DELETE RESTRICT,
+  version           INTEGER NOT NULL,
+  snapshot_json     TEXT NOT NULL CHECK (json_valid(snapshot_json)),
+  change_reason     TEXT NOT NULL,
+  change_source     TEXT NOT NULL
+                    CHECK (change_source IN ('extractor','user','agent','system','review')),
+  created_by        TEXT NOT NULL,
+  source_session_id TEXT REFERENCES research_sessions(session_id) ON DELETE RESTRICT,
+  source_event_seq  INTEGER,
+  created_at        INTEGER NOT NULL,
+  UNIQUE (memory_id, version)
+) STRICT;
+
+CREATE INDEX idx_memory_versions_memory ON research_memory_versions(memory_id, version DESC);
+
+CREATE TABLE research_memory_sources (
+  id            TEXT PRIMARY KEY,
+  memory_id     TEXT NOT NULL REFERENCES research_memory_records(id) ON DELETE RESTRICT,
+  source_key    TEXT NOT NULL,
+  session_id    TEXT REFERENCES research_sessions(session_id) ON DELETE RESTRICT,
+  event_seq     INTEGER,
+  entity_type   TEXT CHECK (entity_type IN (
+                  'source','concept','claim','evidence','question','gap','hypothesis',
+                  'discovery','decision','artifact','session_summary','memory')),
+  entity_id     TEXT,
+  source_id     TEXT REFERENCES research_sources(id) ON DELETE RESTRICT,
+  location_id   TEXT REFERENCES research_source_locations(id) ON DELETE RESTRICT,
+  quote         TEXT NOT NULL DEFAULT '',
+  created_at    INTEGER NOT NULL,
+  UNIQUE (memory_id, source_key),
+  CHECK (session_id IS NOT NULL OR entity_id IS NOT NULL OR source_id IS NOT NULL)
+) STRICT;
+
+CREATE INDEX idx_memory_sources_memory ON research_memory_sources(memory_id);
+CREATE INDEX idx_memory_sources_session ON research_memory_sources(session_id);
+
+CREATE TABLE research_memory_relations (
+  id            TEXT PRIMARY KEY,
+  memory_id     TEXT NOT NULL REFERENCES research_memory_records(id) ON DELETE RESTRICT,
+  entity_type   TEXT NOT NULL CHECK (entity_type IN (
+                  'source','concept','claim','evidence','question','gap','hypothesis',
+                  'discovery','decision','artifact','session_summary','memory')),
+  entity_id     TEXT NOT NULL,
+  relation_type TEXT NOT NULL CHECK (relation_type IN (
+                  'about','derived_from','supports','refutes','supersedes','related','conflicts_with')),
+  note          TEXT NOT NULL DEFAULT '',
+  created_at    INTEGER NOT NULL,
+  UNIQUE (memory_id, entity_type, entity_id, relation_type)
+) STRICT;
+
+CREATE INDEX idx_memory_relations_entity ON research_memory_relations(entity_type, entity_id);
+
+CREATE TABLE research_memory_conflicts (
+  id            TEXT PRIMARY KEY,
+  idea_id       TEXT NOT NULL REFERENCES research_ideas(id) ON DELETE RESTRICT,
+  memory_a_id   TEXT NOT NULL REFERENCES research_memory_records(id) ON DELETE RESTRICT,
+  memory_b_id   TEXT NOT NULL REFERENCES research_memory_records(id) ON DELETE RESTRICT,
+  conflict_type TEXT NOT NULL
+                CHECK (conflict_type IN ('contradiction','condition_mismatch','possible_duplicate','superseded')),
+  description   TEXT NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'open'
+                CHECK (status IN ('open','resolved','dismissed')),
+  resolution    TEXT NOT NULL DEFAULT '',
+  detected_by   TEXT NOT NULL,
+  resolved_at   INTEGER,
+  created_at    INTEGER NOT NULL,
+  CHECK (memory_a_id <> memory_b_id),
+  UNIQUE (memory_a_id, memory_b_id, conflict_type)
+) STRICT;
+
+CREATE INDEX idx_memory_conflicts_idea ON research_memory_conflicts(idea_id, status, created_at DESC);
+
+CREATE TABLE research_memory_selections (
+  id             TEXT PRIMARY KEY,
+  session_id     TEXT NOT NULL REFERENCES research_sessions(session_id) ON DELETE RESTRICT,
+  idea_id        TEXT NOT NULL REFERENCES research_ideas(id) ON DELETE RESTRICT,
+  turn           INTEGER NOT NULL,
+  step           INTEGER NOT NULL,
+  memory_id      TEXT NOT NULL REFERENCES research_memory_records(id) ON DELETE RESTRICT,
+  rank           INTEGER NOT NULL,
+  layer          TEXT NOT NULL CHECK (layer IN ('core','relevant','historical')),
+  reason         TEXT NOT NULL,
+  token_estimate INTEGER NOT NULL,
+  created_at     INTEGER NOT NULL,
+  UNIQUE (session_id, turn, step, memory_id)
+) STRICT;
+
+CREATE INDEX idx_memory_selections_session
+  ON research_memory_selections(session_id, turn, step);
+CREATE INDEX idx_memory_selections_idea
+  ON research_memory_selections(idea_id, created_at DESC);
+`
+
 /** One open research database. */
 export class ResearchDatabase {
   private readonly database: DatabaseSync
@@ -602,6 +734,7 @@ export class ResearchDatabase {
       { version: 1, name: 'ideas', sql: MIGRATION_1 },
       { version: 2, name: 'sessions', sql: MIGRATION_2 },
       { version: 3, name: 'artifacts', sql: MIGRATION_3 },
+      { version: 4, name: 'memory', sql: MIGRATION_4 },
     ]) {
       const applied = this.database
         .prepare('SELECT version FROM research_schema_migrations WHERE version = ?')

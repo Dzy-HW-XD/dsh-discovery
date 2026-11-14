@@ -223,7 +223,7 @@ describe('research event processing', () => {
     const upgraded = new ResearchDatabase(root)
     databases.push(upgraded)
     expect(upgraded.connection.prepare('SELECT version FROM research_schema_migrations ORDER BY version').all()
-      .map(row => row['version'])).toEqual([1, 2, 3])
+      .map(row => row['version'])).toEqual([1, 2, 3, 4])
     const ideaColumns = upgraded.connection.prepare('PRAGMA table_info(research_ideas)').all().map(row => row['name'])
     expect(ideaColumns).toEqual(expect.arrayContaining(['workspace_id', 'workspace_path', 'last_session_id']))
     const timelineColumns = upgraded.connection.prepare('PRAGMA table_info(research_timeline_events)').all().map(row => row['name'])
@@ -284,7 +284,7 @@ describe('research event processing', () => {
     const upgraded = new ResearchDatabase(root)
     databases.push(upgraded)
     expect(upgraded.connection.prepare('SELECT version FROM research_schema_migrations ORDER BY version').all()
-      .map(row => row['version'])).toEqual([1, 2, 3])
+      .map(row => row['version'])).toEqual([1, 2, 3, 4])
     const tables = upgraded.connection.prepare(`
       SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'research_%' ORDER BY name
     `).all().map(row => row['name'])
