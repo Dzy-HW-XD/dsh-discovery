@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The research group owns the Idea-centric workspace foundation. Phase 1 provides long-lived research Ideas, their directed relations, an append-only timeline, and the Host and browser surfaces needed to create and inspect them. Session binding, memory, knowledge, discovery, and autonomous execution belong to later phases and are not part of this group yet.
+The research group owns the Idea-centric workspace foundation. Phase 1 provides long-lived research Ideas, their directed relations, and an append-only timeline. Phase 2 binds Ideas to native DSH Sessions, records Inbox Sessions, and processes Session events through a durable outbox and checkpoints. Memory, knowledge, discovery, and autonomous execution belong to later phases.
 
 ## Table of Contents
 
@@ -30,5 +30,5 @@ The research group owns the Idea-centric workspace foundation. Phase 1 provides 
 
 ## Known Limitations and Deferred Work
 
-- Phase 1 deliberately excludes Session binding, memory, claims, evidence, knowledge graphs, discovery, orchestration, and the research outbox.
+- Phase 2 stops at Session binding, event processing, and recovery; memory, claims, evidence, knowledge graphs, discovery, and orchestration remain later phases.
 - Idea deletion is not implemented; archive is the only supported retirement path.

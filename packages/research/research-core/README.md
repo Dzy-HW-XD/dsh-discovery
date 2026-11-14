@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-research-core` owns the durable Phase 1 research domain. It stores long-lived Ideas, their parent/child hierarchy, directed relations, and an append-only timeline in a dedicated SQLite database. The database is separate from the DSH Session log: conversational facts remain in Session events, while research records survive independently.
+`dsh-research-core` owns the durable research domain. It stores long-lived Ideas, their parent/child hierarchy, directed relations, an append-only timeline, Session-to-Idea bindings, event checkpoints, and a durable outbox in a dedicated SQLite database. The database is separate from the DSH Session log: conversational facts remain in Session events, while research records survive independently.
 
 ## Table of Contents
 
@@ -44,6 +44,11 @@ The service exposes:
 | `parentOf` / `childrenOf` | Read the one authoritative parent edge or its direct children |
 | `addIdeaRelation` / `removeIdeaRelation` | Add a directed relation or supersede it without a hard delete |
 | `listTimeline` | Read the append-only Idea history |
+| `createPendingSession` / `ensureInboxSession` | Record a research Session or an unbound Inbox Session |
+| `linkSessionToIdea` / `unlinkSession` | Change primary ownership without deleting history |
+| `listSessions` / `listInboxSessions` | Query Idea Sessions or unbound Sessions |
+| `finalizeSession` | Mark a research Session complete without deleting DSH history |
+| `recordEventsSeen` / `commitProcessedEvent` | Keep the two processing watermarks |
 
 ### Lifecycle
 
@@ -57,7 +62,7 @@ Parent/child is stored only as `research_ideas.parent_idea_id`; it is never dupl
 
 ## Understand the implementation
 
-The database uses WAL, foreign keys, a five-second busy timeout, and one synchronous `BEGIN IMMEDIATE` transaction per mutation. `research_schema_migrations` records the applied schema version and checksum. Every Idea mutation writes its timeline row in the same transaction, so a committed Idea change and its history never disagree.
+The database uses WAL, foreign keys, a five-second busy timeout, and one synchronous `BEGIN IMMEDIATE` transaction per mutation. `research_schema_migrations` records each applied schema version and checksum. Every Idea mutation writes its timeline row in the same transaction, so a committed Idea change and its history never disagree. Session event side effects travel through `research_outbox`; an event's `last_successfully_processed_seq` advances only in the transaction that marks its outbox row done.
 
 `ResearchIdea.workspacePath` and `ResearchIdea.lastSessionId` are reserved type fields only; Phase 1 never persists or returns them.
 
@@ -65,7 +70,7 @@ The database uses WAL, foreign keys, a five-second busy timeout, and one synchro
 
 ## Known Limitations and Deferred Work
 
-- Phase 1 has no Session, memory, claim, evidence, or knowledge tables; those arrive in later phases with their own migrations.
+- Phase 2 has no memory, claim, evidence, or knowledge tables; those arrive in later phases with their own migrations.
 - Search uses SQL `LIKE`, not FTS5; the Idea search surface is intentionally small until memory retrieval exists.
-- SQLite calls are synchronous on the Host thread; this is acceptable for small Idea CRUD, not for bulk imports.
+- SQLite calls are synchronous on the Host thread; this is acceptable for small Idea and Session metadata writes, not bulk imports.
 - There is no delete operation. Archived Ideas stay readable and relations are superseded, not removed.

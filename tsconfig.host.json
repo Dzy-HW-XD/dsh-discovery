@@ -593,7 +593,7 @@
     { "path": "./apps/plugin-market-generator" },
     { "path": "./apps/desktop-host" },
     { "path": "./packages/research/research-core" },
-    { "path": "./packages/research/research-tools" },
+    { "path": "./packages/research/research-tools/tsconfig.host.json" },
     { "path": "./packages/bundle/research-workspace" },
     { "path": "./apps/desktop/tsconfig.host.json" }
   ]

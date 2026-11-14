@@ -9,6 +9,12 @@
 export type ResearchErrorCode =
   | 'research/idea-not-found'
   | 'research/relation-not-found'
+  | 'research/session-not-found'
+  | 'research/event-gap'
+  | 'research/outbox-not-found'
+  | 'research/workspace-not-found'
+  | 'research/model-unavailable'
+  | 'research/agent-unavailable'
   | 'research/version-conflict'
   | 'research/invalid-transition'
   | 'research/invalid-input'

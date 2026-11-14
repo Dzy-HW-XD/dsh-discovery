@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import type { IdeaRelationView, IdeaView, TimelineEventView } from '@deepseek-ai/dsh-research-tools/types'
+import type { IdeaRelationView, IdeaView, ResearchSessionView, TimelineEventView } from '@deepseek-ai/dsh-research-tools/types'
 import { ResearchPanelView, type ResearchPanelViewProps } from '../src/client/ResearchPanel.tsx'
 import { en } from '../src/client/locales.ts'
 
@@ -23,6 +23,19 @@ const idea = (overrides: Partial<IdeaView> = {}): IdeaView => ({
   ...overrides,
 })
 
+function session(sessionId: string, ideaId: string | undefined, status = 'active'): ResearchSessionView {
+  return {
+    sessionId,
+    ...ideaId === undefined ? {} : { ideaId },
+    role: ideaId === undefined ? 'inbox' : 'primary',
+    status,
+    bindingSource: ideaId === undefined ? 'inbox' : 'research',
+    origin: 'ui',
+    createdAt: 1,
+    version: 1,
+  }
+}
+
 function props(overrides: Partial<ResearchPanelViewProps> = {}): ResearchPanelViewProps {
   return {
     t: makeTranslate(en),
@@ -39,6 +52,13 @@ function props(overrides: Partial<ResearchPanelViewProps> = {}): ResearchPanelVi
     } satisfies IdeaRelationView)),
     listIdeaRelations: vi.fn(async () => [] as IdeaRelationView[]),
     listTimeline: vi.fn(async () => [] as TimelineEventView[]),
+    listSessions: vi.fn(async () => [] as ResearchSessionView[]),
+    listInboxSessions: vi.fn(async () => [] as ResearchSessionView[]),
+    createSession: vi.fn(async () => session('session-1', 'idea_1')),
+    linkSession: vi.fn(async () => session('session-inbox', 'idea_1')),
+    unlinkSession: vi.fn(async () => session('session-1', undefined)),
+    finalizeSession: vi.fn(async () => session('session-1', 'idea_1', 'finalized')),
+    openSession: vi.fn(),
     ...overrides,
   }
 }
@@ -157,6 +177,47 @@ describe('ResearchPanelView', () => {
     await waitFor(() => { expect(listIdeas).toHaveBeenCalledWith({ includeArchived: false }) })
     fireEvent.click(screen.getByLabelText(en.showArchived))
     await waitFor(() => { expect(listIdeas).toHaveBeenCalledWith({ includeArchived: true }) })
+  })
+
+  it('creates a research Session and opens the native Conversation', async () => {
+    const selected = idea()
+    const openSession = vi.fn()
+    const createSession = vi.fn(async () => session('session-new', selected.id))
+    render(<ResearchPanelView {...props({
+      listIdeas: vi.fn(async () => [selected]),
+      getIdea: vi.fn(async () => selected),
+      listSessions: vi.fn(async () => []),
+      createSession,
+      openSession,
+    })} />)
+    fireEvent.click(await screen.findByText('Bounded Activation'))
+    fireEvent.click(await screen.findByText(en.newSession))
+    await waitFor(() => { expect(createSession).toHaveBeenCalledWith(selected.id) })
+    await waitFor(() => { expect(openSession).toHaveBeenCalledWith('session-new') })
+  })
+
+  it('links an Inbox Session and finalizes a research Session through Host operations', async () => {
+    const selected = idea()
+    const inbox = session('session-inbox', undefined)
+    const linked = session('session-inbox', selected.id)
+    const listSessions = vi.fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([linked])
+    const linkSession = vi.fn(async () => linked)
+    const finalizeSession = vi.fn(async () => linked)
+    render(<ResearchPanelView {...props({
+      listIdeas: vi.fn(async () => [selected]),
+      getIdea: vi.fn(async () => selected),
+      listSessions,
+      listInboxSessions: vi.fn(async () => [inbox]),
+      linkSession,
+      finalizeSession,
+    })} />)
+    fireEvent.click(await screen.findByText('Bounded Activation'))
+    fireEvent.click(await screen.findByText(en.linkSession))
+    await waitFor(() => { expect(linkSession).toHaveBeenCalledWith('session-inbox', selected.id) })
+    fireEvent.click(await screen.findByText(en.finalizeSession))
+    await waitFor(() => { expect(finalizeSession).toHaveBeenCalledWith('session-inbox') })
   })
 
 })

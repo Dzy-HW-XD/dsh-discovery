@@ -117,7 +117,7 @@
       "path": "../../credentials/deepseek-account"
     },
     {
-      "path": "../../research/research-tools"
+      "path": "../../research/research-tools/tsconfig.client.json"
     },
     {
       "path": "../../research/research-core"

@@ -12,10 +12,10 @@ import { DatabaseSync } from 'node:sqlite'
 import { ResearchError } from './errors.ts'
 
 /** Physical database layout version, independent of business migrations. */
-export const RESEARCH_DATABASE_LAYOUT_VERSION = 1
+export const RESEARCH_DATABASE_LAYOUT_VERSION = 2
 
-/** Business schema version written by the Phase 1 migration. */
-export const RESEARCH_SCHEMA_VERSION = 1
+/** Business schema version written by the latest migration. */
+export const RESEARCH_SCHEMA_VERSION = 2
 
 const MIGRATION_1 = `
 CREATE TABLE research_ideas (
@@ -73,6 +73,88 @@ CREATE TABLE research_timeline_events (
 ) STRICT;
 
 CREATE INDEX idx_timeline_idea_time ON research_timeline_events(idea_id, created_at DESC);
+`
+
+const MIGRATION_2 = `
+CREATE TABLE research_sessions (
+  session_id        TEXT PRIMARY KEY,
+  idea_id           TEXT REFERENCES research_ideas(id) ON DELETE RESTRICT,
+  role              TEXT NOT NULL DEFAULT 'primary'
+                    CHECK (role IN ('primary','inbox','child','reference')),
+  status            TEXT NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending','active','inbox','finalizing','finalized','failed','archived')),
+  binding_source    TEXT NOT NULL DEFAULT 'research'
+                    CHECK (binding_source IN ('research','inbox','manual','schedule','tool')),
+  workspace_id      TEXT,
+  cwd               TEXT,
+  agent_preset      TEXT,
+  origin            TEXT NOT NULL DEFAULT 'unknown'
+                    CHECK (origin IN ('ui','tool','schedule','subagent','unknown')),
+  created_at        INTEGER NOT NULL,
+  bound_at          INTEGER,
+  finalized_at      INTEGER,
+  last_error        TEXT,
+  version           INTEGER NOT NULL DEFAULT 1
+) STRICT;
+
+CREATE INDEX idx_sessions_idea_status ON research_sessions(idea_id, status, created_at DESC);
+CREATE INDEX idx_sessions_status ON research_sessions(status);
+CREATE INDEX idx_sessions_pending ON research_sessions(status) WHERE status IN ('pending','finalizing');
+
+CREATE TABLE research_session_idea_links (
+  session_id   TEXT NOT NULL REFERENCES research_sessions(session_id) ON DELETE RESTRICT,
+  idea_id      TEXT NOT NULL REFERENCES research_ideas(id) ON DELETE RESTRICT,
+  link_type    TEXT NOT NULL DEFAULT 'reference'
+               CHECK (link_type IN ('reference','derived','child','knowledge_reuse')),
+  note         TEXT NOT NULL DEFAULT '',
+  created_at   INTEGER NOT NULL,
+  PRIMARY KEY (session_id, idea_id, link_type)
+) STRICT;
+
+CREATE INDEX idx_session_links_idea ON research_session_idea_links(idea_id);
+
+CREATE TABLE research_session_checkpoints (
+  session_id        TEXT PRIMARY KEY REFERENCES research_sessions(session_id) ON DELETE RESTRICT,
+  last_seen_seq     INTEGER NOT NULL DEFAULT -1,
+  last_successfully_processed_seq INTEGER NOT NULL DEFAULT -1,
+  last_summarized_seq INTEGER NOT NULL DEFAULT -1,
+  status            TEXT NOT NULL DEFAULT 'idle'
+                    CHECK (status IN ('idle','processing','failed','complete')),
+  attempts          INTEGER NOT NULL DEFAULT 0,
+  last_error        TEXT,
+  updated_at        INTEGER NOT NULL,
+  CHECK (last_seen_seq >= last_successfully_processed_seq),
+  CHECK (last_successfully_processed_seq >= last_summarized_seq)
+) STRICT;
+
+CREATE TABLE research_outbox (
+  id               TEXT PRIMARY KEY,
+  topic            TEXT NOT NULL,
+  aggregate_type   TEXT NOT NULL,
+  aggregate_id     TEXT NOT NULL,
+  idempotency_key  TEXT NOT NULL UNIQUE,
+  payload_json     TEXT NOT NULL CHECK (json_valid(payload_json)),
+  status           TEXT NOT NULL DEFAULT 'pending'
+                   CHECK (status IN ('pending','processing','done','failed','dead')),
+  attempts         INTEGER NOT NULL DEFAULT 0,
+  next_attempt_at  INTEGER NOT NULL DEFAULT 0,
+  last_error       TEXT,
+  created_at       INTEGER NOT NULL,
+  processed_at     INTEGER
+) STRICT;
+
+CREATE INDEX idx_outbox_pending ON research_outbox(status, next_attempt_at);
+CREATE INDEX idx_outbox_aggregate ON research_outbox(aggregate_id, status, created_at);
+
+ALTER TABLE research_ideas ADD COLUMN workspace_id TEXT;
+ALTER TABLE research_ideas ADD COLUMN workspace_path TEXT;
+ALTER TABLE research_ideas ADD COLUMN last_session_id TEXT;
+
+ALTER TABLE research_idea_relations ADD COLUMN source_session_id TEXT REFERENCES research_sessions(session_id) ON DELETE RESTRICT;
+ALTER TABLE research_idea_relations ADD COLUMN source_event_seq INTEGER;
+ALTER TABLE research_idea_relations ADD COLUMN metadata_json TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(metadata_json));
+
+ALTER TABLE research_timeline_events ADD COLUMN session_id TEXT;
 `
 
 /** One open research database. */
@@ -145,19 +227,24 @@ export class ResearchDatabase {
         applied_at INTEGER NOT NULL
       ) STRICT;
     `)
-    const applied = this.database
-      .prepare('SELECT version FROM research_schema_migrations WHERE version = ?')
-      .get(RESEARCH_SCHEMA_VERSION)
-    if (applied !== undefined) return
-    const checksum = createHash('sha256').update(MIGRATION_1).digest('hex')
-    this.transaction(() => {
-      this.database.exec(MIGRATION_1)
-      this.database.prepare(`
-        INSERT INTO research_schema_migrations (version, name, checksum, applied_at)
-        VALUES (?, ?, ?, ?)
-      `).run(RESEARCH_SCHEMA_VERSION, 'ideas', checksum, Date.now())
-      this.database.exec(`PRAGMA user_version = ${RESEARCH_DATABASE_LAYOUT_VERSION}`)
-    })
+    for (const migration of [
+      { version: 1, name: 'ideas', sql: MIGRATION_1 },
+      { version: 2, name: 'sessions', sql: MIGRATION_2 },
+    ]) {
+      const applied = this.database
+        .prepare('SELECT version FROM research_schema_migrations WHERE version = ?')
+        .get(migration.version)
+      if (applied !== undefined) continue
+      const checksum = createHash('sha256').update(migration.sql).digest('hex')
+      this.transaction(() => {
+        this.database.exec(migration.sql)
+        this.database.prepare(`
+          INSERT INTO research_schema_migrations (version, name, checksum, applied_at)
+          VALUES (?, ?, ?, ?)
+        `).run(migration.version, migration.name, checksum, Date.now())
+        this.database.exec(`PRAGMA user_version = ${RESEARCH_DATABASE_LAYOUT_VERSION}`)
+      })
+    }
   }
 
   /** Read the physical layout version without throwing on a new database. */

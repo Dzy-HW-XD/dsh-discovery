@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-research-workspace` is the opt-in profile layer for the Idea-centric research workspace. It inserts `dsh-research-core`, `dsh-research-tools`, and the Web panel without replacing any native DSH row. Phase 1 exposes Ideas, relations, and their timeline; Session binding and later research capabilities are not part of this bundle yet.
+`dsh-research-workspace` is the opt-in profile layer for the Idea-centric research workspace. It inserts `dsh-research-core`, `dsh-research-tools`, and the Web panel without replacing any native DSH row. Phase 2 exposes Ideas, relations, their timeline, and native DSH Session bindings with event checkpoints and Inbox support; later research capabilities are not part of this bundle yet.
 
 ## Table of Contents
 
@@ -48,6 +48,6 @@ The bundle adds no prompt text; the tool schema is owned by `dsh-research-tools`
 
 ## Known Limitations and Deferred Work
 
-- Phase 1 inserts only Idea, relation, and timeline rows; Session binding, memory, knowledge, discovery, and orchestration are later phases.
-- The bundle does not create a research Agent preset or scope tools to research Sessions.
+- Phase 2 inserts Idea, relation, timeline, Session binding, checkpoint, and outbox rows; memory, knowledge, discovery, and orchestration are later phases.
+- The bundle does not create a research Agent preset; Research-created Sessions use their own setup and standard Sessions use the agent/created fallback.
 - The database root is fixed by the core row's default unless a profile overrides that row.

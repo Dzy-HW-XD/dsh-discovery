@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 摘要
 
-`dsh-research-workspace` 是以 Idea 为中心的研究工作区的可选 profile 层。它插入 `dsh-research-core`、`dsh-research-tools` 和 Web 面板，不替换任何 DSH 原生行。Phase 1 暴露 Idea、关系及其时间线；Session 绑定和后续研究能力尚不属于本 bundle。
+`dsh-research-workspace` 是以 Idea 为中心的研究工作区的可选 profile 层。它插入 `dsh-research-core`、`dsh-research-tools` 和 Web 面板，不替换任何 DSH 原生行。Phase 2 暴露 Idea、关系、时间线以及带事件 checkpoint 和 Inbox 的原生 DSH Session 绑定；后续研究能力尚不属于本 bundle。
 
 ## 目录
 
@@ -56,6 +56,6 @@ The bundle adds no prompt text; the tool schema is owned by `dsh-research-tools`
 
 ## 已知限制与延后工作
 
-- Phase 1 只插入 Idea、关系和时间线行；Session 绑定、记忆、知识、发现和编排属于后续阶段。
-- bundle 不创建 research Agent preset，也不把工具限定到 research Session。
+- Phase 2 插入 Idea、关系、时间线、Session 绑定、checkpoint 和 outbox 行；记忆、知识、发现和编排属于后续阶段。
+- bundle 不创建 research Agent preset；Research 创建的会话使用自己的 setup，标准会话使用 agent/created fallback。
 - 除非 profile 覆盖 core 行，数据库根目录由该行默认值固定。

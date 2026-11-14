@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-research-tools` exposes the Phase 1 Idea domain to two consumers. The model gets one consolidated `research_idea` tool; the browser gets the generated `research` Remote namespace. Both delegate to `ctx.researchCore` and never open SQLite themselves.
+`dsh-research-tools` exposes the Research domain to the model and browser. The model gets the global `research_idea` tool and, inside a bound Research Session, a scoped `research_session` tool. The browser gets the generated `research` Remote namespace for Ideas, Session bindings, Inbox Sessions, and finalization. Both delegate to `ctx.researchCore` and never open SQLite themselves.
 
 ## Table of Contents
 
@@ -30,17 +30,17 @@ Mount the plugin after `dsh-research-core` and the tool runtime are present. It 
 
 ### Remote operations
 
-`listIdeas`, `getIdea`, `createIdea`, `updateIdea`, `archiveIdea`, `addIdeaRelation`, `removeIdeaRelation`, `listIdeaRelations`, and `listTimeline`. Failures use stable `research/*` codes, including `research/version-conflict`, `research/invalid-transition`, and `research/parent-cycle`.
+`listIdeas`, `getIdea`, `createIdea`, `updateIdea`, `archiveIdea`, `addIdeaRelation`, `removeIdeaRelation`, `listIdeaRelations`, `listTimeline`, and the Phase 2 Session operations `createSession`, `listSessions`, `listInboxSessions`, `getSession`, `linkSession`, `unlinkSession`, and `finalizeSession`. Failures use stable `research/*` codes, including `research/version-conflict`, `research/invalid-transition`, `research/event-gap`, and `research/session-not-found`.
 
 ### Model tool
 
-`research_idea` accepts one `action`: `create`, `list`, `get`, `update`, `archive`, `add_relation`, `remove_relation`, `list_relations`, or `timeline`. Updates and archives require `expectedVersion`; a stale value is rejected rather than overwriting concurrent work.
+`research_idea` accepts one `action`: `create`, `list`, `get`, `update`, `archive`, `add_relation`, `remove_relation`, `list_relations`, or `timeline`. Updates and archives require `expectedVersion`; a stale value is rejected rather than overwriting concurrent work. A bound Session also receives `research_session` with `list`, `get`, and `finalize` actions; `finalize` only targets the calling Session.
 
 -----
 
 ## Understand the implementation
 
-The Host controller maps domain values to wire-safe views and maps `ResearchError` to `RemoteError` with the same code and details. The tool wraps the same service calls in a JSON-safe result; it does not keep a second cache or duplicate state. The package contributes its Remote types through `@deepseek-ai/dsh-api-remotes`, so the browser receives generated method signatures rather than hand-written transport code.
+The Host controller maps domain values to wire-safe views and maps `ResearchError` to `RemoteError` with the same code and details. Research-created Sessions use `ctx.agents.create({ setup })`, so the Idea brief and scoped tool exist before the first request. Standard UI Sessions and resumes use the serial `agent/created` fallback; installation is idempotent per Agent and can be removed when the Session is unlinked. The package contributes its Remote types through `@deepseek-ai/dsh-api-remotes`, so the browser receives generated method signatures rather than hand-written transport code.
 
 -----
 
@@ -76,6 +76,6 @@ Results are appended after the reusable request prefix. They do not change the t
 
 ## Known Limitations and Deferred Work
 
-- The tool is registered globally in Phase 1; Session-scoped research composition is a Phase 2 concern.
-- There is no `research_session` tool, memory extraction, claim/evidence API, or knowledge traversal yet.
-- The dashboard still refreshes after each completed operation; it does not yet subscribe to the forwarded `research/changed` event.
+- `research_idea` remains global; `research_session` and the Research prompt are scoped to bound Agents.
+- Memory extraction, claim/evidence APIs, knowledge traversal, and discovery are later phases.
+- Session event processing persists through the Research outbox; the dashboard still refreshes after each operation instead of subscribing to `research/changed`.

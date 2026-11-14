@@ -9,6 +9,7 @@ import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-cli
 import type {
   IdeaRelationView,
   IdeaView,
+  ResearchSessionView,
   TimelineEventView,
 } from '@deepseek-ai/dsh-research-tools/types'
 import { NS } from './locales.ts'
@@ -33,6 +34,13 @@ export interface ResearchPanelInjected {
   }) => Promise<IdeaRelationView>
   readonly listIdeaRelations: (ideaId: string) => Promise<IdeaRelationView[]>
   readonly listTimeline: (ideaId: string) => Promise<TimelineEventView[]>
+  readonly listSessions: (ideaId: string) => Promise<ResearchSessionView[]>
+  readonly listInboxSessions: () => Promise<ResearchSessionView[]>
+  readonly createSession: (ideaId: string) => Promise<ResearchSessionView>
+  readonly linkSession: (sessionId: string, ideaId: string) => Promise<ResearchSessionView>
+  readonly unlinkSession: (sessionId: string) => Promise<ResearchSessionView>
+  readonly finalizeSession: (sessionId: string) => Promise<ResearchSessionView>
+  readonly openSession: (sessionId: string) => void
 }
 
 type PanelProps =
@@ -50,14 +58,14 @@ const styles: Record<string, CSSProperties> = {
   page: { height: '100%', overflow: 'auto', padding: '48px 32px 48px', boxSizing: 'border-box' },
   header: { maxWidth: 1200, margin: '0 auto 24px' },
   title: { margin: 0, fontSize: 24, lineHeight: 1.2 },
-  subtitle: { margin: '8px 0 0', color: 'var(--dsh-text-secondary, #667085)' },
+  hint: { margin: '8px 0 0', color: 'var(--dsh-text-secondary, #667085)' },
   columns: { display: 'grid', gridTemplateColumns: 'minmax(240px, 320px) minmax(0, 1fr)', gap: 24, maxWidth: 1200, margin: '0 auto' },
   card: { border: '1px solid var(--dsh-border, #d0d5dd)', borderRadius: 12, padding: 16, background: 'var(--dsh-surface, #fff)' },
   list: { listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 8 },
   row: { width: '100%', textAlign: 'left', border: '1px solid transparent', borderRadius: 8, padding: '10px 12px', background: 'transparent', cursor: 'pointer' },
   rowActive: { borderColor: 'var(--dsh-accent, #2563eb)', background: 'color-mix(in srgb, var(--dsh-accent, #2563eb) 8%, transparent)' },
   field: { display: 'grid', gap: 4, marginBottom: 12 },
-  label: { fontSize: 12, fontWeight: 600, color: 'var(--dsh-text-secondary, #667085)' },
+  legend: { fontSize: 12, fontWeight: 600, color: 'var(--dsh-text-secondary, #667085)' },
   input: { width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--dsh-border, #d0d5dd)', font: 'inherit' },
   button: { padding: '8px 12px', borderRadius: 8, border: '1px solid var(--dsh-border, #d0d5dd)', background: 'var(--dsh-surface, #fff)', cursor: 'pointer' },
   primary: { background: 'var(--dsh-accent, #2563eb)', borderColor: 'var(--dsh-accent, #2563eb)', color: '#fff' },
@@ -65,7 +73,7 @@ const styles: Record<string, CSSProperties> = {
   error: { color: '#b42318', background: '#fef3f2', borderRadius: 8, padding: '8px 10px', marginBottom: 12 },
   section: { marginTop: 20 },
   relation: { padding: '8px 0', borderBottom: '1px solid var(--dsh-border, #eaecf0)' },
-  empty: { color: 'var(--dsh-text-secondary, #667085)', padding: '12px 0' },
+  blank: { color: 'var(--dsh-text-secondary, #667085)', padding: '12px 0' },
 }
 
 /**
@@ -76,12 +84,15 @@ const styles: Record<string, CSSProperties> = {
 export function ResearchPanelView(props: ResearchPanelViewProps) {
   const {
     t, listIdeas, getIdea, createIdea, updateIdea, archiveIdea, addIdeaRelation, listIdeaRelations, listTimeline,
+    listSessions, listInboxSessions, createSession, linkSession, unlinkSession, finalizeSession, openSession,
   } = props
   const [ideas, setIdeas] = useState<readonly IdeaView[]>([])
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined)
   const [selected, setSelected] = useState<IdeaView | null>(null)
   const [relations, setRelations] = useState<readonly IdeaRelationView[]>([])
   const [timeline, setTimeline] = useState<readonly TimelineEventView[]>([])
+  const [sessions, setSessions] = useState<readonly ResearchSessionView[]>([])
+  const [inbox, setInbox] = useState<readonly ResearchSessionView[]>([])
   const [title, setTitle] = useState('')
   const [question, setQuestion] = useState('')
   const [description, setDescription] = useState('')
@@ -93,22 +104,28 @@ export function ResearchPanelView(props: ResearchPanelViewProps) {
   const [error, setError] = useState<string | undefined>(undefined)
 
   const loadSelected = useCallback(async (ideaId: string): Promise<void> => {
-    const [idea, nextRelations, nextTimeline] = await Promise.all([
+    const [idea, nextRelations, nextTimeline, nextSessions] = await Promise.all([
       getIdea(ideaId),
       listIdeaRelations(ideaId),
       listTimeline(ideaId),
+      listSessions(ideaId),
     ])
     setSelected(idea)
     setRelations(nextRelations)
     setTimeline(nextTimeline)
-  }, [getIdea, listIdeaRelations, listTimeline])
+    setSessions(nextSessions)
+  }, [getIdea, listIdeaRelations, listTimeline, listSessions])
 
   const refresh = useCallback(async (): Promise<void> => {
     setBusy(true)
     setError(undefined)
     try {
-      const next = await listIdeas({ includeArchived: showArchived })
+      const [next, nextInbox] = await Promise.all([
+        listIdeas({ includeArchived: showArchived }),
+        listInboxSessions(),
+      ])
       setIdeas(next)
+      setInbox(nextInbox)
       if (selectedId !== undefined && next.some(idea => idea.id === selectedId)) {
         await loadSelected(selectedId)
       }
@@ -117,7 +134,7 @@ export function ResearchPanelView(props: ResearchPanelViewProps) {
     } finally {
       setBusy(false)
     }
-  }, [listIdeas, loadSelected, selectedId, showArchived])
+  }, [listIdeas, listInboxSessions, loadSelected, selectedId, showArchived])
 
   useEffect(() => { void refresh() }, [refresh])
 
@@ -242,6 +259,64 @@ export function ResearchPanelView(props: ResearchPanelViewProps) {
     }
   }
 
+  const startSession = async (): Promise<void> => {
+    if (selected === null) return
+    setBusy(true)
+    setError(undefined)
+    try {
+      const created = await createSession(selected.id)
+      await refresh()
+      setSessions(await listSessions(selected.id))
+      openSession(created.sessionId)
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const linkInboxSession = async (sessionId: string): Promise<void> => {
+    if (selected === null) return
+    setBusy(true)
+    setError(undefined)
+    try {
+      await linkSession(sessionId, selected.id)
+      await refresh()
+      setSessions(await listSessions(selected.id))
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const unlink = async (sessionId: string): Promise<void> => {
+    setBusy(true)
+    setError(undefined)
+    try {
+      await unlinkSession(sessionId)
+      await refresh()
+      if (selected !== null) setSessions(await listSessions(selected.id))
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const finalize = async (sessionId: string): Promise<void> => {
+    setBusy(true)
+    setError(undefined)
+    try {
+      await finalizeSession(sessionId)
+      if (selected !== null) setSessions(await listSessions(selected.id))
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const relationLabel = (relation: IdeaRelationView): string => {
     if (selected === null) return relation.relationType
     const otherId = relation.fromIdeaId === selected.id ? relation.toIdeaId : relation.fromIdeaId
@@ -257,13 +332,13 @@ export function ResearchPanelView(props: ResearchPanelViewProps) {
     <div style={styles.page}>
       <header style={styles.header}>
         <h1 style={styles.title}>{t('title')}</h1>
-        <p style={styles.subtitle}>{t('subtitle')}</p>
+        <p style={styles.hint}>{t('subtitle')}</p>
       </header>
       {error !== undefined && <div style={styles.error} role="alert">{t('error')}: {error}</div>}
       <div style={styles.columns}>
         <section style={styles.card} aria-label={t('panel')}>
           <div style={styles.field}>
-            <label style={styles.label} htmlFor="research-title">{t('newIdea')}</label>
+            <label style={styles.legend} htmlFor="research-title">{t('newIdea')}</label>
             <input id="research-title" style={styles.input} value={title} placeholder={t('titlePlaceholder')} onChange={(event) => { setTitle(event.target.value) }} />
             <input style={styles.input} value={question} placeholder={t('questionPlaceholder')} onChange={(event) => { setQuestion(event.target.value) }} />
             <input style={styles.input} value={description} placeholder={t('descriptionPlaceholder')} onChange={(event) => { setDescription(event.target.value) }} />
@@ -279,7 +354,7 @@ export function ResearchPanelView(props: ResearchPanelViewProps) {
           </label>
           <div style={styles.meta}>{busy ? t('loading') : `${ideas.length}`}</div>
           {ideas.length === 0
-            ? <p style={styles.empty}>{t('empty')}</p>
+            ? <p style={styles.blank}>{t('empty')}</p>
             : (
               <ul style={styles.list}>
                 {ideas.map(idea => (
@@ -289,7 +364,7 @@ export function ResearchPanelView(props: ResearchPanelViewProps) {
                       onClick={() => { void select(idea.id) }}
                     >
                       <strong>{idea.title}</strong>
-                      <div style={styles.meta}>{idea.status} · v{idea.version}</div>
+                      <div style={styles.meta}>{t('ideaMeta', { status: idea.status, version: idea.version })}</div>
                     </button>
                   </li>
                 ))}
@@ -298,13 +373,13 @@ export function ResearchPanelView(props: ResearchPanelViewProps) {
         </section>
         <section style={styles.card} aria-label={t('selectIdea')}>
           {selected === null
-            ? <p style={styles.empty}>{t('selectIdea')}</p>
+            ? <p style={styles.blank}>{t('selectIdea')}</p>
             : (
               <>
                 <h2 style={{ marginTop: 0 }}>{selected.title}</h2>
                 <div style={styles.meta}>{t('updated')} {new Date(selected.updatedAt).toLocaleString()} · {t('version')} {selected.version}</div>
                 <div style={styles.field}>
-                  <span style={styles.label}>{t('status')}</span>
+                  <span style={styles.legend}>{t('status')}</span>
                   <select
                     aria-label={t('status')}
                     style={styles.input}
@@ -318,7 +393,7 @@ export function ResearchPanelView(props: ResearchPanelViewProps) {
                 <p><strong>{t('researchQuestion')}:</strong> {selected.researchQuestion || t('none')}</p>
                 <p><strong>{t('summary')}:</strong> {selected.currentSummary || t('none')}</p>
                 <div style={styles.field}>
-                  <span style={styles.label}>{t('parent')}</span>
+                  <span style={styles.legend}>{t('parent')}</span>
                   <select
                     aria-label={t('parent')}
                     style={styles.input}
@@ -334,9 +409,32 @@ export function ResearchPanelView(props: ResearchPanelViewProps) {
                 </div>
                 <button style={styles.button} onClick={() => { void archive() }} disabled={busy || selected.status === 'archived'}>{t('archive')}</button>
                 <div style={styles.section}>
+                  <h3>{t('sessions')}</h3>
+                  <button style={styles.button} onClick={() => { void startSession() }} disabled={busy}>{t('newSession')}</button>
+                  {sessions.length === 0
+                    ? <p style={styles.blank}>{t('noSessions')}</p>
+                    : sessions.map(session => (
+                      <div key={session.sessionId} style={styles.relation}>
+                        <div>{session.sessionId} <span style={styles.meta}>· {session.status}</span></div>
+                        <button style={styles.button} onClick={() => { openSession(session.sessionId) }}>{t('openSession')}</button>
+                        <button style={styles.button} onClick={() => { void unlink(session.sessionId) }} disabled={busy}>{t('unlinkSession')}</button>
+                        <button style={styles.button} onClick={() => { void finalize(session.sessionId) }} disabled={busy || session.status === 'finalized'}>{t('finalizeSession')}</button>
+                      </div>
+                    ))}
+                  <h4>{t('inbox')}</h4>
+                  {inbox.length === 0
+                    ? <p style={styles.blank}>{t('noInbox')}</p>
+                    : inbox.map(session => (
+                      <div key={session.sessionId} style={styles.relation}>
+                        <div>{session.sessionId} <span style={styles.meta}>· {session.status}</span></div>
+                        <button style={styles.button} onClick={() => { void linkInboxSession(session.sessionId) }} disabled={busy}>{t('linkSession')}</button>
+                      </div>
+                    ))}
+                </div>
+                <div style={styles.section}>
                   <h3>{t('relations')}</h3>
                   {relations.length === 0
-                    ? <p style={styles.empty}>{t('noRelations')}</p>
+                    ? <p style={styles.blank}>{t('noRelations')}</p>
                     : relations.map(relation => (
                       <div key={relation.id} style={styles.relation}>
                         <div>{relationLabel(relation)}</div>
@@ -360,7 +458,7 @@ export function ResearchPanelView(props: ResearchPanelViewProps) {
                 <div style={styles.section}>
                   <h3>{t('timeline')}</h3>
                   {timeline.length === 0
-                    ? <p style={styles.empty}>{t('noTimeline')}</p>
+                    ? <p style={styles.blank}>{t('noTimeline')}</p>
                     : timeline.map(event => (
                       <div key={event.id} style={styles.relation}>
                         <div>{event.summary}</div>

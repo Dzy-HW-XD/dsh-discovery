@@ -86,7 +86,9 @@ export interface ResearchIdea {
   readonly archivedAt?: number
   readonly version: number
   readonly createdBy: string
-  /** Reserved for Phase 2; Phase 1 never persists this field. */
+  /** Optional Workspace identity when the Idea is attached to one. */
+  readonly workspaceId?: string
+  /** Optional Workspace directory used when creating research Sessions. */
   readonly workspacePath?: string
   /** Reserved for Phase 2; Phase 1 never persists this field. */
   readonly lastSessionId?: string
@@ -111,6 +113,8 @@ export interface ResearchIdeaRelation {
 export interface ResearchTimelineEvent {
   readonly id: TimelineEventId
   readonly ideaId: IdeaId
+  /** Session that produced the event, when the event is Session-related. */
+  readonly sessionId?: string
   readonly eventType: string
   readonly entityType?: string
   readonly entityId?: string

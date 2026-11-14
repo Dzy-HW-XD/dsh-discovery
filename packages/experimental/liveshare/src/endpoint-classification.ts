@@ -107,6 +107,13 @@ export const VIEWER_ENDPOINT_CLASSES = {
   'research/removeIdeaRelation': 'owner-only', // owner supersedes a research relation
   'research/listIdeaRelations': 'owner-only', // owner reads research relations
   'research/listTimeline': 'owner-only', // owner reads a research timeline
+  'research/createSession': 'owner-only', // owner creates a research Session
+  'research/listSessions': 'owner-only', // owner lists research Sessions
+  'research/listInboxSessions': 'owner-only', // owner lists unbound Inbox Sessions
+  'research/getSession': 'owner-only', // owner reads a research Session binding
+  'research/linkSession': 'owner-only', // owner links a Session to an Idea
+  'research/unlinkSession': 'owner-only', // owner unlinks a Session
+  'research/finalizeSession': 'owner-only', // owner finalizes a research Session
   'session/initializeDefaultModel': 'owner-only', // owner initializes a Session default model
   'session/openWorkspacePath': 'owner-only', // owner opens a Workspace path
   'session/search': 'owner-only', // owner searches across Sessions

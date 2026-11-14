@@ -50,4 +50,7 @@ export const PRODUCT_PACKAGE_POLICY: Readonly<Record<string, ProductPackagePolic
   'packages/client/web': { category: 'web-distribution', reason: 'Browser boot kernel bundled into the Web distribution.' },
   'packages/client/ui-dockkit': { category: 'web-distribution', reason: 'Layout library bundled into the Web distribution.' },
   'packages/util/package-manifest': { category: 'declarations', reason: 'Shared package metadata declarations have no runtime mount.' },
+  'packages/research/research-core': { category: 'optional', reason: 'Research domain storage mounted only by the explicitly installed research-workspace bundle.' },
+  'packages/client/ui-research-workspace': { category: 'optional', reason: 'Research dashboard shipped inside the opt-in research-workspace bundle.' },
+  'packages/bundle/research-workspace': { category: 'optional', reason: 'Opt-in profile layer applied explicitly through cordis.patch.yml; no shipped profile mounts it.' },
 }

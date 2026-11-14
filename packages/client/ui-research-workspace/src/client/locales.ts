@@ -47,7 +47,17 @@ export const zh = {
   relationReferences: '引用',
   archiveConfirm: '归档后默认列表会隐藏该 Idea；历史仍保留。继续？',
   showArchived: '显示已归档',
+  sessions: '研究会话',
+  newSession: '新建研究会话',
+  openSession: '打开会话',
+  noSessions: '还没有研究会话。',
+  inbox: '收件箱',
+  noInbox: '没有未绑定的会话。',
+  linkSession: '绑定到 Idea',
+  unlinkSession: '解绑',
+  finalizeSession: '完成研究',
   refresh: '刷新',
+  ideaMeta: '{status} · v{version}',
 } satisfies Record<string, string>
 
 /** The research workspace key union. */
@@ -91,7 +101,17 @@ export const en = {
   relationReferences: 'References',
   archiveConfirm: 'Archiving hides this Idea from the default list; history is retained. Continue?',
   showArchived: 'Show archived',
+  sessions: 'Research Sessions',
+  newSession: 'New Research Session',
+  openSession: 'Open Session',
+  noSessions: 'No research Sessions yet.',
+  inbox: 'Inbox',
+  noInbox: 'No unbound Sessions.',
+  linkSession: 'Link to Idea',
+  unlinkSession: 'Unlink',
+  finalizeSession: 'Finalize research',
   refresh: 'Refresh',
+  ideaMeta: '{status} · v{version}',
 } satisfies Record<ResearchWorkspaceKey, string>
 
 const ja = {
@@ -105,7 +125,7 @@ const ja = {
   updated: '更新', version: 'バージョン', researchQuestion: '研究課題', summary: '現在の要約',
   objectives: '研究目的', parent: '親アイデア', none: 'なし', relationRelated: '関連',
   relationDerived: '派生元', relationMerged: '統合元', relationReferences: '参照',
-  archiveConfirm: 'アーカイブすると既定の一覧から隠れます。履歴は保持されます。続行しますか？', refresh: '更新', showArchived: 'アーカイブを表示',
+  archiveConfirm: 'アーカイブすると既定の一覧から隠れます。履歴は保持されます。続行しますか？', refresh: '更新', showArchived: 'アーカイブを表示', sessions: '研究セッション', newSession: '新しい研究会話', openSession: '会話を開く', noSessions: '研究セッションはまだありません。', inbox: '受信箱', noInbox: '未バインドのセッションはありません。', linkSession: 'Idea にリンク', unlinkSession: 'リンク解除', finalizeSession: '研究を完了', ideaMeta: '{status} · v{version}',
 } satisfies Record<ResearchWorkspaceKey, string>
 
 const es = {
@@ -119,7 +139,7 @@ const es = {
   updated: 'Actualizado', version: 'Versión', researchQuestion: 'Pregunta de investigación', summary: 'Resumen actual',
   objectives: 'Objetivos', parent: 'Idea padre', none: 'Ninguno', relationRelated: 'Relacionada',
   relationDerived: 'Derivada de', relationMerged: 'Fusionada desde', relationReferences: 'Referencia',
-  archiveConfirm: 'Archivar oculta la Idea de la lista predeterminada; el historial se conserva. ¿Continuar?', refresh: 'Actualizar', showArchived: 'Mostrar archivadas',
+  archiveConfirm: 'Archivar oculta la Idea de la lista predeterminada; el historial se conserva. ¿Continuar?', refresh: 'Actualizar', showArchived: 'Mostrar archivadas', sessions: 'Sesiones', newSession: 'Nueva sesión', openSession: 'Abrir sesión', noSessions: 'Aún no hay sesiones.', inbox: 'Bandeja de entrada', noInbox: 'No hay sesiones sin vincular.', linkSession: 'Vincular a Idea', unlinkSession: 'Desvincular', finalizeSession: 'Finalizar investigación', ideaMeta: '{status} · v{version}',
 } satisfies Record<ResearchWorkspaceKey, string>
 
 const fr = {
@@ -133,7 +153,7 @@ const fr = {
   updated: 'Mis à jour', version: 'Version', researchQuestion: 'Question de recherche', summary: 'Résumé actuel',
   objectives: 'Objectifs', parent: 'Idée parente', none: 'Aucun', relationRelated: 'Liée',
   relationDerived: 'Dérivée de', relationMerged: 'Fusionnée depuis', relationReferences: 'Référence',
-  archiveConfirm: 'Archiver masque l’Idée de la liste par défaut ; l’historique est conservé. Continuer ?', refresh: 'Actualiser', showArchived: 'Afficher les archivées',
+  archiveConfirm: 'Archiver masque l’Idée de la liste par défaut ; l’historique est conservé. Continuer ?', refresh: 'Actualiser', showArchived: 'Afficher les archivées', sessions: 'Sessions', newSession: 'Nouvelle session', openSession: 'Ouvrir la session', noSessions: 'Aucune session.', inbox: 'Boîte de réception', noInbox: 'Aucune session non liée.', linkSession: 'Lier à l’Idée', unlinkSession: 'Délier', finalizeSession: 'Finaliser la recherche', ideaMeta: '{status} · v{version}',
 } satisfies Record<ResearchWorkspaceKey, string>
 
 const de = {
@@ -147,7 +167,7 @@ const de = {
   updated: 'Aktualisiert', version: 'Version', researchQuestion: 'Forschungsfrage', summary: 'Aktuelle Zusammenfassung',
   objectives: 'Ziele', parent: 'Übergeordnete Idee', none: 'Keine', relationRelated: 'Verwandt',
   relationDerived: 'Abgeleitet von', relationMerged: 'Zusammengeführt aus', relationReferences: 'Verweist auf',
-  archiveConfirm: 'Archivieren blendet die Idee aus der Standardliste aus; der Verlauf bleibt erhalten. Fortfahren?', refresh: 'Aktualisieren', showArchived: 'Archivierte anzeigen',
+  archiveConfirm: 'Archivieren blendet die Idee aus der Standardliste aus; der Verlauf bleibt erhalten. Fortfahren?', refresh: 'Aktualisieren', showArchived: 'Archivierte anzeigen', sessions: 'Sitzungen', newSession: 'Neue Sitzung', openSession: 'Sitzung öffnen', noSessions: 'Noch keine Sitzungen.', inbox: 'Posteingang', noInbox: 'Keine ungebundenen Sitzungen.', linkSession: 'Mit Idee verknüpfen', unlinkSession: 'Verknüpfung lösen', finalizeSession: 'Forschung abschließen', ideaMeta: '{status} · v{version}',
 } satisfies Record<ResearchWorkspaceKey, string>
 
 const ru = {
@@ -161,7 +181,7 @@ const ru = {
   updated: 'Обновлено', version: 'Версия', researchQuestion: 'Исследовательский вопрос', summary: 'Текущее резюме',
   objectives: 'Цели', parent: 'Родительская Идея', none: 'Нет', relationRelated: 'Связана',
   relationDerived: 'Производная от', relationMerged: 'Объединена из', relationReferences: 'Ссылается на',
-  archiveConfirm: 'Архивирование скроет Идею из списка; история сохранится. Продолжить?', refresh: 'Обновить', showArchived: 'Показать архивные',
+  archiveConfirm: 'Архивирование скроет Идею из списка; история сохранится. Продолжить?', refresh: 'Обновить', showArchived: 'Показать архивные', sessions: 'Сессии', newSession: 'Новая сессия', openSession: 'Открыть сессию', noSessions: 'Сессий пока нет.', inbox: 'Входящие', noInbox: 'Нет непривязанных сессий.', linkSession: 'Связать с Идеей', unlinkSession: 'Отвязать', finalizeSession: 'Завершить исследование', ideaMeta: '{status} · v{version}',
 } satisfies Record<ResearchWorkspaceKey, string>
 
 const pt = {
@@ -175,7 +195,7 @@ const pt = {
   updated: 'Atualizado', version: 'Versão', researchQuestion: 'Pergunta de pesquisa', summary: 'Resumo atual',
   objectives: 'Objetivos', parent: 'Ideia pai', none: 'Nenhum', relationRelated: 'Relacionada',
   relationDerived: 'Derivada de', relationMerged: 'Mesclada de', relationReferences: 'Referencia',
-  archiveConfirm: 'Arquivar oculta a Ideia da lista padrão; o histórico é mantido. Continuar?', refresh: 'Atualizar', showArchived: 'Mostrar arquivadas',
+  archiveConfirm: 'Arquivar oculta a Ideia da lista padrão; o histórico é mantido. Continuar?', refresh: 'Atualizar', showArchived: 'Mostrar arquivadas', sessions: 'Sessões', newSession: 'Nova sessão', openSession: 'Abrir sessão', noSessions: 'Ainda não há sessões.', inbox: 'Caixa de entrada', noInbox: 'Nenhuma sessão não vinculada.', linkSession: 'Vincular à Ideia', unlinkSession: 'Desvincular', finalizeSession: 'Finalizar pesquisa', ideaMeta: '{status} · v{version}',
 } satisfies Record<ResearchWorkspaceKey, string>
 
 export { ja, es, fr, de, ru, pt }

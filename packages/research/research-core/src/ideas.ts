@@ -59,6 +59,9 @@ interface IdeaRowMap {
 function mapIdea(row: SqlRow): ResearchIdea {
   const parent = optionalText(row, 'parent_idea_id')
   const archivedAt = optionalInteger(row, 'archived_at')
+  const workspaceId = optionalText(row, 'workspace_id')
+  const workspacePath = optionalText(row, 'workspace_path')
+  const lastSessionId = optionalText(row, 'last_session_id')
   return {
     id: IdeaId(text(row, 'id')),
     title: text(row, 'title'),
@@ -71,6 +74,9 @@ function mapIdea(row: SqlRow): ResearchIdea {
     createdAt: integer(row, 'created_at'),
     updatedAt: integer(row, 'updated_at'),
     ...archivedAt === undefined ? {} : { archivedAt },
+    ...workspaceId === undefined ? {} : { workspaceId },
+    ...workspacePath === undefined ? {} : { workspacePath },
+    ...lastSessionId === undefined ? {} : { lastSessionId },
     version: integer(row, 'version'),
     createdBy: text(row, 'created_by'),
   }
@@ -106,9 +112,11 @@ function mapRelation(row: SqlRow): ResearchIdeaRelation {
 function mapTimeline(row: SqlRow): ResearchTimelineEvent {
   const entityType = optionalText(row, 'entity_type')
   const entityId = optionalText(row, 'entity_id')
+  const sessionId = optionalText(row, 'session_id')
   return {
     id: TimelineEventId(text(row, 'id')),
     ideaId: IdeaId(text(row, 'idea_id')),
+    ...sessionId === undefined ? {} : { sessionId },
     eventType: text(row, 'event_type'),
     ...entityType === undefined ? {} : { entityType },
     ...entityId === undefined ? {} : { entityId },

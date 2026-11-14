@@ -1,6 +1,7 @@
 /**
  * Cordis service for the research workspace core. The service owns the single
- * SQLite connection and delegates the Phase 1 Idea domain to `IdeaManager`.
+ * SQLite connection and delegates Ideas, Session bindings, checkpoints, and
+ * the durable outbox to their repositories.
  * @module @deepseek-ai/dsh-research-core
  */
 
@@ -9,6 +10,9 @@ import z from '@deepseek-ai/schemastery'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import { ResearchDatabase } from './database.ts'
 import { IdeaManager } from './ideas.ts'
+import { ResearchOutbox } from './outbox.ts'
+import { ResearchSessionManager } from './sessions.ts'
+import { ResearchSessionEventProcessor } from './events.ts'
 import type {
   AddIdeaRelationInput,
   CreateIdeaInput,
@@ -25,6 +29,9 @@ import type {
 export * from './database.ts'
 export * from './errors.ts'
 export * from './ideas.ts'
+export * from './outbox.ts'
+export * from './sessions.ts'
+export * from './events.ts'
 export * from './types.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -49,6 +56,12 @@ export default class ResearchCore extends Service {
   readonly database: ResearchDatabase
   /** Idea lifecycle and relation operations. */
   readonly ideas: IdeaManager
+  /** Session-to-Idea bindings and processing watermarks. */
+  readonly sessionBindings: ResearchSessionManager
+  /** Durable Research side-effect queue. */
+  readonly outbox: ResearchOutbox
+  /** Session event processor and recovery owner. */
+  readonly events: ResearchSessionEventProcessor
 
   /**
    * @param ctx - Host context owning the service lifetime.
@@ -58,7 +71,13 @@ export default class ResearchCore extends Service {
     super(ctx, 'researchCore')
     this.database = new ResearchDatabase(config.root ?? dshHomePath('research'))
     this.ideas = new IdeaManager(this.database)
-    ctx.effect(() => () => { this.database.close() }, 'research-core: database')
+    this.sessionBindings = new ResearchSessionManager(this.database)
+    this.outbox = new ResearchOutbox(this.database)
+    this.events = new ResearchSessionEventProcessor(ctx, this.database, this.sessionBindings, this.outbox)
+    ctx.effect(() => () => {
+      this.events.dispose()
+      this.database.close()
+    }, 'research-core: database')
   }
 
   /**

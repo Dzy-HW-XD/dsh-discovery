@@ -6,6 +6,8 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
+import { SessionId } from '@deepseek-ai/dsh-session'
+import type {} from '@deepseek-ai/dsh-session-query'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
@@ -21,18 +23,29 @@ import ResearchCore, {
   type ResearchIdeaRelation,
   type ResearchTimelineEvent,
 } from '@deepseek-ai/dsh-research-core'
+import { ResearchComposition } from './composition.ts'
+import { ResearchSessionCreator } from './session-creator.ts'
+import { toCheckpointView, toIdeaLinkView, toSessionView } from './views.ts'
 import type {
   AddIdeaRelationRequest,
   ArchiveIdeaRequest,
   CreateIdeaRequest,
+  CreateResearchSessionRequest,
+  FinalizeResearchSessionRequest,
   GetIdeaRequest,
+  GetResearchSessionRequest,
   IdeaRelationView,
   IdeaView,
+  LinkResearchSessionRequest,
   ListIdeaRelationsRequest,
   ListIdeasRequest,
+  ListResearchSessionsRequest,
   RemoveIdeaRelationRequest,
+  ResearchSessionDetailView,
+  ResearchSessionView,
   TimelineEventView,
   TimelineRequest,
+  UnlinkResearchSessionRequest,
   UpdateIdeaRequest,
 } from './types.ts'
 
@@ -48,6 +61,12 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
   interface RemoteErrorDetailsMap {
     'research/idea-not-found': Record<string, string | number | boolean | null>
     'research/relation-not-found': Record<string, string | number | boolean | null>
+    'research/session-not-found': Record<string, string | number | boolean | null>
+    'research/event-gap': Record<string, string | number | boolean | null>
+    'research/outbox-not-found': Record<string, string | number | boolean | null>
+    'research/workspace-not-found': Record<string, string | number | boolean | null>
+    'research/model-unavailable': Record<string, string | number | boolean | null>
+    'research/agent-unavailable': Record<string, string | number | boolean | null>
     'research/version-conflict': Record<string, string | number | boolean | null>
     'research/invalid-transition': Record<string, string | number | boolean | null>
     'research/invalid-input': Record<string, string | number | boolean | null>
@@ -97,6 +116,7 @@ function toTimelineView(event: ResearchTimelineEvent): TimelineEventView {
   return {
     id: event.id,
     ideaId: event.ideaId,
+    ...event.sessionId === undefined ? {} : { sessionId: event.sessionId },
     eventType: event.eventType,
     ...event.entityType === undefined ? {} : { entityType: event.entityType },
     ...event.entityId === undefined ? {} : { entityId: event.entityId },
@@ -138,13 +158,100 @@ function admittedRelationType(value: string): IdeaRelationType {
 export default class ResearchController extends TypertRemoteService {
   static inject = ['researchCore', 'tools']
 
+  private readonly composition: ResearchComposition
+  private readonly creator: ResearchSessionCreator
+  /** Startup reconciliation; tests may await this before asserting Inbox rows. */
+  readonly ready: Promise<void>
+
   /**
-   * @param ctx - Host context carrying the research core and tool registry.
+   * @param ctx - Host context carrying the research core, Agent registry, and tool registry.
    */
   constructor(ctx: Context) {
     super(ctx, 'researchController', { namespace: 'research' })
     const core = ctx.researchCore
+    this.composition = new ResearchComposition(core)
+    this.creator = new ResearchSessionCreator(ctx, core, this.composition)
+    core.events.setSessionLogReader(ctx.get('sessionQuery'))
     ctx.effect(() => ctx.tools.register(researchIdeaTool(core)), 'research-tools: research_idea')
+
+    ctx.on('session/created', (session) => {
+      if (session.header.origin === 'subagent') return
+      try {
+        core.sessionBindings.ensureInboxSession({
+          sessionId: session.id,
+          ...session.header.cwd === undefined ? {} : { cwd: session.header.cwd },
+          origin: 'unknown',
+        })
+      } catch (error: unknown) {
+        ctx.logger.warn(`research: cannot register Inbox Session ${session.id}: ${String(error)}`)
+      }
+    })
+    ctx.on('session/event', (session, event) => {
+      try {
+        core.events.observe(session.id, event)
+      } catch (error: unknown) {
+        ctx.logger.warn(`research: cannot observe Session event ${session.id}/${event.seq}: ${String(error)}`)
+      }
+    })
+    ctx.on('session/disposed', (session) => {
+      if (ctx.get('sessionQuery') === undefined || core.sessionBindings.getSession(session.id) === undefined) return
+      void core.events.scanSession(session.id).catch((error: unknown) => {
+        ctx.logger.warn(`research: final Session scan failed for ${session.id}: ${String(error)}`)
+      })
+    })
+    ctx.on('agent/created', ({ agent }) => {
+      let binding = core.sessionBindings.getSession(agent.id)
+      if (binding?.ideaId === undefined) return
+      try {
+        if (!this.composition.isInstalled(agent) && (binding.status === 'pending' || binding.status === 'failed')) {
+          binding = core.sessionBindings.markSessionActive(agent.id)
+        }
+        this.composition.install(agent.ctx, agent, binding)
+      } catch (error: unknown) {
+        ctx.logger.warn(`research: agent composition fallback failed for ${agent.id}: ${String(error)}`)
+      }
+    })
+    this.ready = this.reconcile()
+  }
+
+  /** Reconcile Inbox rows, pending creations, and missed Session events. */
+  private async reconcile(): Promise<void> {
+    const ctx = this.ctx
+    try {
+      const query = ctx.get('sessionQuery')
+      if (query !== undefined) {
+        for (const record of await query.listSessions()) {
+          if (record.header.origin === 'subagent') continue
+          try {
+            this.ctx.researchCore.sessionBindings.ensureInboxSession({
+              sessionId: record.header.id,
+              ...record.header.cwd === undefined ? {} : { cwd: record.header.cwd },
+              origin: 'unknown',
+            })
+          } catch (error: unknown) {
+            ctx.logger.warn(`research: cannot reconcile Inbox Session ${record.header.id}: ${String(error)}`)
+          }
+        }
+      }
+      for (const pending of this.ctx.researchCore.sessionBindings.listPendingSessions()) {
+        let exists = this.ctx.sessions.get(pending.sessionId) !== undefined
+        if (!exists && query !== undefined) {
+          try {
+            await query.readSession(pending.sessionId)
+            exists = true
+          } catch { /* a missing persisted Session is a failed creation */ }
+        }
+        try {
+          if (exists) this.ctx.researchCore.sessionBindings.markSessionActive(pending.sessionId)
+          else this.ctx.researchCore.sessionBindings.markSessionFailed(pending.sessionId, 'pending Session did not exist after restart')
+        } catch (error: unknown) {
+          ctx.logger.warn(`research: cannot reconcile pending Session ${pending.sessionId}: ${String(error)}`)
+        }
+      }
+      await this.ctx.researchCore.events.reconcile()
+    } catch (error: unknown) {
+      ctx.logger.warn(`research: startup reconciliation failed: ${String(error)}`)
+    }
   }
 
   /**
@@ -301,6 +408,133 @@ export default class ResearchController extends TypertRemoteService {
   listTimeline(request: TimelineRequest): TimelineEventView[] {
     try {
       return this.ctx.researchCore.listTimeline(IdeaId(request.ideaId), request.limit).map(toTimelineView)
+    } catch (error) {
+      throwRemote(error)
+    }
+  }
+
+  /**
+   * Create one Research Session under an Idea through `ctx.agents.create({ setup })`.
+   * @param request - Idea, optional cwd, and optional Workspace.
+   * @returns the active Session binding.
+   */
+  @Remote('createSession')
+  async createSession(request: CreateResearchSessionRequest): Promise<ResearchSessionView> {
+    try {
+      return await this.creator.create(request)
+    } catch (error) {
+      throwRemote(error)
+    }
+  }
+
+  /**
+   * List one Idea's Sessions.
+   * @param request - Idea and archive visibility.
+   * @returns Session views.
+   */
+  @Remote('listSessions')
+  listSessions(request: ListResearchSessionsRequest): ResearchSessionView[] {
+    try {
+      return this.ctx.researchCore.sessionBindings
+        .listSessions(IdeaId(request.ideaId), request.includeArchived)
+        .map(toSessionView)
+    } catch (error) {
+      throwRemote(error)
+    }
+  }
+
+  /**
+   * List unbound Inbox Sessions.
+   * @returns Session views.
+   */
+  @Remote('listInboxSessions')
+  listInboxSessions(): ResearchSessionView[] {
+    return this.ctx.researchCore.sessionBindings.listInboxSessions().map(toSessionView)
+  }
+
+  /**
+   * Read one Session with its checkpoint and referenced Ideas.
+   * @param request - Session identity.
+   * @returns the detail, or null.
+   */
+  @Remote('getSession')
+  getSession(request: GetResearchSessionRequest): ResearchSessionDetailView | null {
+    try {
+      const sessionId = SessionId(request.sessionId)
+      const binding = this.ctx.researchCore.sessionBindings.getSession(sessionId)
+      if (binding === undefined) return null
+      const checkpoint = this.ctx.researchCore.sessionBindings.getCheckpoint(sessionId)
+      return {
+        session: toSessionView(binding),
+        checkpoint: checkpoint === undefined ? null : toCheckpointView(checkpoint),
+        links: this.ctx.researchCore.sessionBindings.listSessionIdeaLinks(sessionId).map(toIdeaLinkView),
+      }
+    } catch (error) {
+      throwRemote(error)
+    }
+  }
+
+  /**
+   * Link an existing Session to an Idea.
+   * @param request - Session and target Idea.
+   * @returns the active binding.
+   */
+  @Remote('linkSession')
+  linkSession(request: LinkResearchSessionRequest): ResearchSessionView {
+    try {
+      const binding = this.ctx.researchCore.sessionBindings.linkSessionToIdea(
+        SessionId(request.sessionId), IdeaId(request.ideaId),
+      )
+      try {
+        this.creator.installForLiveBinding(binding)
+      } catch (error: unknown) {
+        this.ctx.logger.warn(`research: live composition failed for linked Session ${request.sessionId}: ${String(error)}`)
+      }
+      void this.ctx.researchCore.events.scanSession(binding.sessionId).catch((error: unknown) => {
+        this.ctx.logger.warn(`research: linked Session scan failed for ${request.sessionId}: ${String(error)}`)
+      })
+      return toSessionView(binding)
+    } catch (error) {
+      throwRemote(error)
+    }
+  }
+
+  /**
+   * Return a Session to the Inbox.
+   * @param request - Session identity.
+   * @returns the Inbox binding.
+   */
+  @Remote('unlinkSession')
+  unlinkSession(request: UnlinkResearchSessionRequest): ResearchSessionView {
+    try {
+      const binding = this.ctx.researchCore.sessionBindings.unlinkSession(SessionId(request.sessionId))
+      this.creator.uninstallForLiveSession(binding.sessionId)
+      return toSessionView(binding)
+    } catch (error) {
+      throwRemote(error)
+    }
+  }
+
+  /**
+   * Finalize one Session's research lifecycle.
+   * @param request - Session and optional summary.
+   * @returns the finalized binding.
+   */
+  @Remote('finalizeSession')
+  finalizeSession(request: FinalizeResearchSessionRequest): ResearchSessionView {
+    try {
+      const sessionId = SessionId(request.sessionId)
+      const current = this.ctx.researchCore.sessionBindings.getSession(sessionId)
+      if (current === undefined) {
+        throw new ResearchError('research/session-not-found', `Session "${sessionId}" not found`, { sessionId })
+      }
+      if (current.ideaId === undefined) {
+        throw new ResearchError('research/invalid-input', 'an Inbox Session has no primary Idea to finalize', { sessionId })
+      }
+      if (current.status !== 'finalized' && current.status !== 'finalizing') {
+        this.ctx.researchCore.sessionBindings.markSessionFinalizing(sessionId)
+      }
+      return toSessionView(this.ctx.researchCore.sessionBindings.finalizeSession(sessionId, request.summary))
     } catch (error) {
       throwRemote(error)
     }

@@ -33,6 +33,7 @@ async function bench(): Promise<{ ctx: Context; fiber: { dispose(): Promise<void
     createIdea: async () => ({ ok: false, error: { code: 'test/not-called', message: 'not called', details: {} } }),
   } as never)
   ctx.provide('layout', {} as never)
+  ctx.provide('uiWorkspace', { openSession: () => {} } as never)
   await ctx.plugin(SlotRegistry).await()
   ctx.slots.register({
     name: 'root',

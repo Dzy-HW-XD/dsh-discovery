@@ -41,6 +41,7 @@ export interface IdeaRelationView {
 export interface TimelineEventView {
   readonly id: string
   readonly ideaId: string
+  readonly sessionId?: string
   readonly eventType: string
   readonly entityType?: string
   readonly entityId?: string
@@ -119,3 +120,84 @@ export interface TimelineRequest {
   readonly limit?: number
 }
 
+
+/** One Session-to-Idea binding as the browser and tools read it. */
+export interface ResearchSessionView {
+  readonly sessionId: string
+  readonly ideaId?: string
+  readonly role: string
+  readonly status: string
+  readonly bindingSource: string
+  readonly workspaceId?: string
+  readonly cwd?: string
+  readonly agentPreset?: string
+  readonly origin: string
+  readonly createdAt: number
+  readonly boundAt?: number
+  readonly finalizedAt?: number
+  readonly lastError?: string
+  readonly version: number
+}
+
+/** One processing checkpoint as the browser and tools read it. */
+export interface ResearchSessionCheckpointView {
+  readonly sessionId: string
+  readonly lastSeenSeq: number
+  readonly lastSuccessfullyProcessedSeq: number
+  readonly lastSummarizedSeq: number
+  readonly status: string
+  readonly attempts: number
+  readonly lastError?: string
+  readonly updatedAt: number
+}
+
+/** One non-primary Idea reference for a Session. */
+export interface ResearchSessionIdeaLinkView {
+  readonly sessionId: string
+  readonly ideaId: string
+  readonly linkType: string
+  readonly note: string
+  readonly createdAt: number
+}
+
+/** One Session detail with checkpoint and referenced Ideas. */
+export interface ResearchSessionDetailView {
+  readonly session: ResearchSessionView
+  readonly checkpoint: ResearchSessionCheckpointView | null
+  readonly links: readonly ResearchSessionIdeaLinkView[]
+}
+
+/** Create one Research Session under an Idea. */
+export interface CreateResearchSessionRequest {
+  readonly ideaId: string
+  readonly cwd?: string
+  readonly workspaceId?: string
+}
+
+/** List one Idea's Sessions. */
+export interface ListResearchSessionsRequest {
+  readonly ideaId: string
+  readonly includeArchived?: boolean
+}
+
+/** Read one Session binding. */
+export interface GetResearchSessionRequest {
+  readonly sessionId: string
+}
+
+/** Link an existing Session to an Idea. */
+export interface LinkResearchSessionRequest {
+  readonly sessionId: string
+  readonly ideaId: string
+}
+
+/** Unlink one Session from its primary Idea. */
+export interface UnlinkResearchSessionRequest {
+  readonly sessionId: string
+}
+
+/** Finalize one Session. */
+export interface FinalizeResearchSessionRequest {
+  readonly sessionId: string
+  readonly summary?: string
+}

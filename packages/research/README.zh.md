@@ -9,7 +9,7 @@ kind: "package-group"
 
 ## 摘要
 
-研究包组拥有以 Idea 为中心的工作区基础。Phase 1 提供长期研究 Idea、它们的有向关系、只追加时间线，以及创建和查看这些记录所需的 Host 与浏览器界面。Session 绑定、记忆、知识、发现和自主执行属于后续阶段，目前不在本包组内。
+研究包组拥有以 Idea 为中心的工作区基础。Phase 1 提供长期研究 Idea、它们的有向关系与只追加时间线。Phase 2 把 Idea 绑定到原生 DSH Session，记录 Inbox Session，并通过持久 Outbox 与 checkpoint 处理 Session 事件。记忆、知识、发现和自主执行属于后续阶段。
 
 ## 目录
 
@@ -34,5 +34,5 @@ kind: "package-group"
 
 ## 已知限制与延后工作
 
-- Phase 1 明确排除 Session 绑定、记忆、Claim、Evidence、知识图谱、发现、编排和 Research Outbox。
+- Phase 2 止于 Session 绑定、事件处理与恢复；记忆、Claim、Evidence、知识图谱、发现和编排仍属后续阶段。
 - 未实现 Idea 删除；归档是唯一受支持的退役路径。
