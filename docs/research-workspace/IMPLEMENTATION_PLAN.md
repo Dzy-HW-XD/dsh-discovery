@@ -1,6 +1,6 @@
 # DSH Research Workspace — Implementation Plan
 
-- 状态：Phase 1–3 已完成（2026-11-14）；Batch B / Phase 4 待开始
+- 状态：Phase 1–4 已完成（2026-11-14）；Batch C / Phase 5 待开始
 - 修订：2026-11-13 Phase 0 Review — 增加 Phase 1 边界、Agent setup 主路径、恢复 watermark
 - 标记：DSH 运行时结论为 **Verified**；实施为 **Proposed**；未验证项显式标 **Unverified/Deferred**
 - 目标版本：DSH `0.2.2-rc.1`

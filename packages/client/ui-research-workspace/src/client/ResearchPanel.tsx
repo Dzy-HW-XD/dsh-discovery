@@ -10,6 +10,7 @@ import type {
   IdeaRelationView,
   IdeaView,
   ResearchSessionView,
+  ResearchWorkspaceView,
   TimelineEventView,
 } from '@deepseek-ai/dsh-research-tools/types'
 import { NS } from './locales.ts'
@@ -34,6 +35,7 @@ export interface ResearchPanelInjected {
   }) => Promise<IdeaRelationView>
   readonly listIdeaRelations: (ideaId: string) => Promise<IdeaRelationView[]>
   readonly listTimeline: (ideaId: string) => Promise<TimelineEventView[]>
+  readonly getWorkspace: (ideaId: string) => Promise<ResearchWorkspaceView>
   readonly listSessions: (ideaId: string) => Promise<ResearchSessionView[]>
   readonly listInboxSessions: () => Promise<ResearchSessionView[]>
   readonly createSession: (ideaId: string) => Promise<ResearchSessionView>
@@ -50,6 +52,17 @@ type PanelProps =
 
 /** Props the pure dashboard needs, independent of slot-standard hooks. */
 export type ResearchPanelViewProps = PropsLocale<typeof NS> & ResearchPanelInjected
+
+type TabId = 'overview' | 'sessions' | 'knowledge' | 'graph' | 'artifacts' | 'memory' | 'timeline'
+const TABS: readonly { id: TabId; key: 'tabOverview' | 'tabSessions' | 'tabKnowledge' | 'tabGraph' | 'tabArtifacts' | 'tabMemory' | 'tabTimeline' }[] = [
+  { id: 'overview', key: 'tabOverview' },
+  { id: 'sessions', key: 'tabSessions' },
+  { id: 'knowledge', key: 'tabKnowledge' },
+  { id: 'graph', key: 'tabGraph' },
+  { id: 'artifacts', key: 'tabArtifacts' },
+  { id: 'memory', key: 'tabMemory' },
+  { id: 'timeline', key: 'tabTimeline' },
+]
 
 const STATUSES = ['seed', 'exploring', 'developing', 'reviewing', 'mature', 'archived'] as const
 const RELATION_TYPES = ['related_to', 'derived_from', 'merged_from', 'references'] as const
@@ -72,6 +85,7 @@ const styles: Record<string, CSSProperties> = {
   meta: { color: 'var(--dsh-text-secondary, #667085)', fontSize: 12 },
   error: { color: '#b42318', background: '#fef3f2', borderRadius: 8, padding: '8px 10px', marginBottom: 12 },
   section: { marginTop: 20 },
+  tabs: { display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 16 },
   relation: { padding: '8px 0', borderBottom: '1px solid var(--dsh-border, #eaecf0)' },
   blank: { color: 'var(--dsh-text-secondary, #667085)', padding: '12px 0' },
 }
@@ -84,13 +98,15 @@ const styles: Record<string, CSSProperties> = {
 export function ResearchPanelView(props: ResearchPanelViewProps) {
   const {
     t, listIdeas, getIdea, createIdea, updateIdea, archiveIdea, addIdeaRelation, listIdeaRelations, listTimeline,
-    listSessions, listInboxSessions, createSession, linkSession, unlinkSession, finalizeSession, openSession,
+    getWorkspace, listSessions, listInboxSessions, createSession, linkSession, unlinkSession, finalizeSession, openSession,
   } = props
   const [ideas, setIdeas] = useState<readonly IdeaView[]>([])
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined)
   const [selected, setSelected] = useState<IdeaView | null>(null)
   const [relations, setRelations] = useState<readonly IdeaRelationView[]>([])
   const [timeline, setTimeline] = useState<readonly TimelineEventView[]>([])
+  const [workspace, setWorkspace] = useState<ResearchWorkspaceView | null>(null)
+  const [tab, setTab] = useState<TabId>('overview')
   const [sessions, setSessions] = useState<readonly ResearchSessionView[]>([])
   const [inbox, setInbox] = useState<readonly ResearchSessionView[]>([])
   const [title, setTitle] = useState('')
@@ -104,17 +120,19 @@ export function ResearchPanelView(props: ResearchPanelViewProps) {
   const [error, setError] = useState<string | undefined>(undefined)
 
   const loadSelected = useCallback(async (ideaId: string): Promise<void> => {
-    const [idea, nextRelations, nextTimeline, nextSessions] = await Promise.all([
+    const [idea, nextRelations, nextTimeline, nextSessions, nextWorkspace] = await Promise.all([
       getIdea(ideaId),
       listIdeaRelations(ideaId),
       listTimeline(ideaId),
       listSessions(ideaId),
+      getWorkspace(ideaId),
     ])
     setSelected(idea)
     setRelations(nextRelations)
     setTimeline(nextTimeline)
     setSessions(nextSessions)
-  }, [getIdea, listIdeaRelations, listTimeline, listSessions])
+    setWorkspace(nextWorkspace)
+  }, [getIdea, listIdeaRelations, listTimeline, listSessions, getWorkspace])
 
   const refresh = useCallback(async (): Promise<void> => {
     setBusy(true)
@@ -408,64 +426,146 @@ export function ResearchPanelView(props: ResearchPanelViewProps) {
                   </select>
                 </div>
                 <button style={styles.button} onClick={() => { void archive() }} disabled={busy || selected.status === 'archived'}>{t('archive')}</button>
-                <div style={styles.section}>
-                  <h3>{t('sessions')}</h3>
-                  <button style={styles.button} onClick={() => { void startSession() }} disabled={busy}>{t('newSession')}</button>
-                  {sessions.length === 0
-                    ? <p style={styles.blank}>{t('noSessions')}</p>
-                    : sessions.map(session => (
-                      <div key={session.sessionId} style={styles.relation}>
-                        <div>{session.sessionId} <span style={styles.meta}>· {session.status}</span></div>
-                        <button style={styles.button} onClick={() => { openSession(session.sessionId) }}>{t('openSession')}</button>
-                        <button style={styles.button} onClick={() => { void unlink(session.sessionId) }} disabled={busy}>{t('unlinkSession')}</button>
-                        <button style={styles.button} onClick={() => { void finalize(session.sessionId) }} disabled={busy || session.status === 'finalized'}>{t('finalizeSession')}</button>
-                      </div>
-                    ))}
-                  <h4>{t('inbox')}</h4>
-                  {inbox.length === 0
-                    ? <p style={styles.blank}>{t('noInbox')}</p>
-                    : inbox.map(session => (
-                      <div key={session.sessionId} style={styles.relation}>
-                        <div>{session.sessionId} <span style={styles.meta}>· {session.status}</span></div>
-                        <button style={styles.button} onClick={() => { void linkInboxSession(session.sessionId) }} disabled={busy}>{t('linkSession')}</button>
-                      </div>
-                    ))}
+                <div style={styles.tabs}>
+                  {TABS.map(item => (
+                    <button
+                      key={item.id}
+                      style={{ ...styles.button, ...(tab === item.id ? styles.primary : {}) }}
+                      onClick={() => { setTab(item.id) }}
+                    >{t(item.key)}</button>
+                  ))}
                 </div>
-                <div style={styles.section}>
-                  <h3>{t('relations')}</h3>
-                  {relations.length === 0
-                    ? <p style={styles.blank}>{t('noRelations')}</p>
-                    : relations.map(relation => (
-                      <div key={relation.id} style={styles.relation}>
-                        <div>{relationLabel(relation)}</div>
-                        <div style={styles.meta}>{relation.status}{relation.note.length === 0 ? '' : ` · ${relation.note}`}</div>
-                      </div>
-                    ))}
-                  <div style={styles.field}>
-                    <select style={styles.input} value={targetId} onChange={(event) => { setTargetId(event.target.value) }}>
-                      <option value="">{t('targetIdea')}</option>
-                      {ideas
-                        .filter(idea => idea.id !== selected.id)
-                        .map(idea => <option key={idea.id} value={idea.id}>{idea.title}</option>)}
-                    </select>
-                    <select style={styles.input} value={relationType} onChange={(event) => { setRelationType(event.target.value) }}>
-                      {RELATION_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
-                    </select>
-                    <input style={styles.input} value={note} placeholder={t('note')} onChange={(event) => { setNote(event.target.value) }} />
-                    <button style={styles.button} onClick={() => { void addRelation() }} disabled={busy || targetId.length === 0}>{t('addRelation')}</button>
+                {tab === 'overview' && (
+                  <div style={styles.section}>
+                    <h3>{t('tabOverview')}</h3>
+                    {workspace === null
+                      ? <p style={styles.blank}>{t('loading')}</p>
+                      : (
+                        <>
+                          <div style={styles.meta}>{Object.entries(workspace.counts).map(([kind, count]) => `${kind}: ${count}`).join(' · ')}</div>
+                          {timeline.slice(0, 5).map(event => (
+                            <div key={event.id} style={styles.relation}>
+                              <div>{event.summary}</div>
+                              <div style={styles.meta}>{new Date(event.createdAt).toLocaleString()}</div>
+                            </div>
+                          ))}
+                        </>
+                      )}
                   </div>
-                </div>
-                <div style={styles.section}>
-                  <h3>{t('timeline')}</h3>
-                  {timeline.length === 0
-                    ? <p style={styles.blank}>{t('noTimeline')}</p>
-                    : timeline.map(event => (
-                      <div key={event.id} style={styles.relation}>
-                        <div>{event.summary}</div>
-                        <div style={styles.meta}>{new Date(event.createdAt).toLocaleString()}</div>
-                      </div>
-                    ))}
-                </div>
+                )}
+                {tab === 'knowledge' && (
+                  <div style={styles.section}>
+                    <h3>{t('tabKnowledge')}</h3>
+                    {workspace === null || workspace.entities.length === 0
+                      ? <p style={styles.blank}>{t('noKnowledge')}</p>
+                      : workspace.entities.map(entity => (
+                        <div key={`${entity.kind}:${entity.id}`} style={styles.relation}>
+                          <div><strong>{entity.kind}</strong> · {entity.title}</div>
+                          <div style={styles.meta}>{entity.status === undefined ? '' : `${entity.status} · `}{entity.id}</div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+                {tab === 'graph' && (
+                  <div style={styles.section}>
+                    <h3>{t('tabGraph')}</h3>
+                    {workspace === null || workspace.relations.length === 0
+                      ? <p style={styles.blank}>{t('noGraph')}</p>
+                      : workspace.relations.map((relation) => {
+                        const label = `${relation.fromEntityType}:${relation.fromEntityId} → `
+                          + `${relation.relationType} → ${relation.toEntityType}:${relation.toEntityId}`
+                        return (
+                          <div key={relation.id} style={styles.relation}>
+                            <div>{label}</div>
+                            <div style={styles.meta}>{relation.status} · {relation.confidence}</div>
+                          </div>
+                        )
+                      })}
+                  </div>
+                )}
+                {tab === 'artifacts' && (
+                  <div style={styles.section}>
+                    <h3>{t('tabArtifacts')}</h3>
+                    {(workspace?.entities ?? []).filter(entity => entity.kind === 'artifact').length === 0
+                      ? <p style={styles.blank}>{t('noArtifacts')}</p>
+                      : (workspace?.entities ?? []).filter(entity => entity.kind === 'artifact').map(entity => (
+                        <div key={entity.id} style={styles.relation}>
+                          <div>{entity.title}</div>
+                          <div style={styles.meta}>{entity.status} · {entity.id}</div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+                {tab === 'memory' && (
+                  <div style={styles.section}>
+                    <h3>{t('tabMemory')}</h3>
+                    <p style={styles.blank}>{t('memoryDeferred')}</p>
+                  </div>
+                )}
+                {tab === 'sessions' && (
+                  <div style={styles.section}>
+                    <h3>{t('sessions')}</h3>
+                    <button style={styles.button} onClick={() => { void startSession() }} disabled={busy}>{t('newSession')}</button>
+                    {sessions.length === 0
+                      ? <p style={styles.blank}>{t('noSessions')}</p>
+                      : sessions.map(session => (
+                        <div key={session.sessionId} style={styles.relation}>
+                          <div>{session.sessionId} <span style={styles.meta}>· {session.status}</span></div>
+                          <button style={styles.button} onClick={() => { openSession(session.sessionId) }}>{t('openSession')}</button>
+                          <button style={styles.button} onClick={() => { void unlink(session.sessionId) }} disabled={busy}>{t('unlinkSession')}</button>
+                          <button style={styles.button} onClick={() => { void finalize(session.sessionId) }} disabled={busy || session.status === 'finalized'}>{t('finalizeSession')}</button>
+                        </div>
+                      ))}
+                    <h4>{t('inbox')}</h4>
+                    {inbox.length === 0
+                      ? <p style={styles.blank}>{t('noInbox')}</p>
+                      : inbox.map(session => (
+                        <div key={session.sessionId} style={styles.relation}>
+                          <div>{session.sessionId} <span style={styles.meta}>· {session.status}</span></div>
+                          <button style={styles.button} onClick={() => { void linkInboxSession(session.sessionId) }} disabled={busy}>{t('linkSession')}</button>
+                        </div>
+                      ))}
+                  </div>
+                )}
+                {tab === 'graph' && (
+                  <div style={styles.section}>
+                    <h3>{t('relations')}</h3>
+                    {relations.length === 0
+                      ? <p style={styles.blank}>{t('noRelations')}</p>
+                      : relations.map(relation => (
+                        <div key={relation.id} style={styles.relation}>
+                          <div>{relationLabel(relation)}</div>
+                          <div style={styles.meta}>{relation.status}{relation.note.length === 0 ? '' : ` · ${relation.note}`}</div>
+                        </div>
+                      ))}
+                    <div style={styles.field}>
+                      <select style={styles.input} value={targetId} onChange={(event) => { setTargetId(event.target.value) }}>
+                        <option value="">{t('targetIdea')}</option>
+                        {ideas
+                          .filter(idea => idea.id !== selected.id)
+                          .map(idea => <option key={idea.id} value={idea.id}>{idea.title}</option>)}
+                      </select>
+                      <select style={styles.input} value={relationType} onChange={(event) => { setRelationType(event.target.value) }}>
+                        {RELATION_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+                      </select>
+                      <input style={styles.input} value={note} placeholder={t('note')} onChange={(event) => { setNote(event.target.value) }} />
+                      <button style={styles.button} onClick={() => { void addRelation() }} disabled={busy || targetId.length === 0}>{t('addRelation')}</button>
+                    </div>
+                  </div>
+                )}
+                {tab === 'timeline' && (
+                  <div style={styles.section}>
+                    <h3>{t('timeline')}</h3>
+                    {timeline.length === 0
+                      ? <p style={styles.blank}>{t('noTimeline')}</p>
+                      : timeline.map(event => (
+                        <div key={event.id} style={styles.relation}>
+                          <div>{event.summary}</div>
+                          <div style={styles.meta}>{new Date(event.createdAt).toLocaleString()}</div>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </>
             )}
         </section>

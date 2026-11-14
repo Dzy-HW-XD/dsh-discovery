@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import type { IdeaRelationView, IdeaView, ResearchSessionView, TimelineEventView } from '@deepseek-ai/dsh-research-tools/types'
+import type { IdeaRelationView, IdeaView, ResearchSessionView, ResearchWorkspaceView, TimelineEventView } from '@deepseek-ai/dsh-research-tools/types'
 import { ResearchPanelView, type ResearchPanelViewProps } from '../src/client/ResearchPanel.tsx'
 import { en } from '../src/client/locales.ts'
 
@@ -52,6 +52,9 @@ function props(overrides: Partial<ResearchPanelViewProps> = {}): ResearchPanelVi
     } satisfies IdeaRelationView)),
     listIdeaRelations: vi.fn(async () => [] as IdeaRelationView[]),
     listTimeline: vi.fn(async () => [] as TimelineEventView[]),
+    getWorkspace: vi.fn(async () => ({
+      counts: {}, entities: [], relations: [], sessions: [], timeline: [],
+    })),
     listSessions: vi.fn(async () => [] as ResearchSessionView[]),
     listInboxSessions: vi.fn(async () => [] as ResearchSessionView[]),
     createSession: vi.fn(async () => session('session-1', 'idea_1')),
@@ -88,7 +91,9 @@ describe('ResearchPanelView', () => {
     })} />)
     fireEvent.click(await screen.findByText('Bounded Activation'))
     expect(await screen.findByText('Initial summary')).toBeTruthy()
+    fireEvent.click(screen.getByText(en.tabGraph))
     expect(screen.getByText(/same mechanism/)).toBeTruthy()
+    fireEvent.click(screen.getByText(en.tabTimeline))
     expect(screen.getByText('Idea created')).toBeTruthy()
   })
 
@@ -191,6 +196,7 @@ describe('ResearchPanelView', () => {
       openSession,
     })} />)
     fireEvent.click(await screen.findByText('Bounded Activation'))
+    fireEvent.click(await screen.findByText(en.tabSessions))
     fireEvent.click(await screen.findByText(en.newSession))
     await waitFor(() => { expect(createSession).toHaveBeenCalledWith(selected.id) })
     await waitFor(() => { expect(openSession).toHaveBeenCalledWith('session-new') })
@@ -214,10 +220,44 @@ describe('ResearchPanelView', () => {
       finalizeSession,
     })} />)
     fireEvent.click(await screen.findByText('Bounded Activation'))
+    fireEvent.click(await screen.findByText(en.tabSessions))
     fireEvent.click(await screen.findByText(en.linkSession))
     await waitFor(() => { expect(linkSession).toHaveBeenCalledWith('session-inbox', selected.id) })
     fireEvent.click(await screen.findByText(en.finalizeSession))
     await waitFor(() => { expect(finalizeSession).toHaveBeenCalledWith('session-inbox') })
+  })
+
+  it('renders the Phase 3 workspace tabs from the Host projection', async () => {
+    const selected = idea()
+    const getWorkspace = vi.fn(async () => ({
+      counts: { claims: 1, artifacts: 1, relations: 1 },
+      entities: [
+        { id: 'clm_1', kind: 'claim', title: 'Bounded activation claim', status: 'active', createdAt: 1 },
+        { id: 'art_1', kind: 'artifact', title: 'Research report', status: 'ready', createdAt: 2 },
+      ],
+      relations: [{
+        id: 'rel_knowledge_1', fromEntityType: 'evidence', fromEntityId: 'evd_1',
+        toEntityType: 'claim', toEntityId: 'clm_1', relationType: 'supports', confidence: 0.9, status: 'active',
+      }],
+      sessions: [],
+      timeline: [{ id: 'tl_1', ideaId: selected.id, eventType: 'claim.created', summary: 'Claim created', payload: {}, createdAt: 3 }],
+    }) satisfies ResearchWorkspaceView)
+    render(<ResearchPanelView {...props({
+      listIdeas: vi.fn(async () => [selected]),
+      getIdea: vi.fn(async () => selected),
+      getWorkspace,
+    })} />)
+    fireEvent.click(await screen.findByText('Bounded Activation'))
+    expect(await screen.findByText(/claims: 1/)).toBeTruthy()
+    expect(getWorkspace).toHaveBeenCalledWith(selected.id)
+    fireEvent.click(screen.getByText(en.tabKnowledge))
+    expect(await screen.findByText(/Bounded activation claim/)).toBeTruthy()
+    fireEvent.click(screen.getByText(en.tabArtifacts))
+    expect(await screen.findByText('Research report')).toBeTruthy()
+    fireEvent.click(screen.getByText(en.tabGraph))
+    expect(await screen.findByText(/supports/)).toBeTruthy()
+    fireEvent.click(screen.getByText(en.tabMemory))
+    expect(await screen.findByText(en.memoryDeferred)).toBeTruthy()
   })
 
 })

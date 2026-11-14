@@ -57,6 +57,17 @@ export const zh = {
   unlinkSession: '解绑',
   finalizeSession: '完成研究',
   refresh: '刷新',
+  tabOverview: '概览',
+  tabSessions: '会话',
+  tabKnowledge: '知识',
+  tabGraph: '图谱',
+  tabArtifacts: '产出',
+  tabMemory: '记忆',
+  tabTimeline: '时间线',
+  noKnowledge: '还没有研究实体。',
+  noGraph: '还没有知识关系。',
+  noArtifacts: '还没有研究产出。',
+  memoryDeferred: '记忆审查将在 Phase 5 提供。',
   ideaMeta: '{status} · v{version}',
 } satisfies Record<string, string>
 
@@ -111,6 +122,17 @@ export const en = {
   unlinkSession: 'Unlink',
   finalizeSession: 'Finalize research',
   refresh: 'Refresh',
+  tabOverview: 'Overview',
+  tabSessions: 'Sessions',
+  tabKnowledge: 'Knowledge',
+  tabGraph: 'Graph',
+  tabArtifacts: 'Artifacts',
+  tabMemory: 'Memory',
+  tabTimeline: 'Timeline',
+  noKnowledge: 'No research entities yet.',
+  noGraph: 'No knowledge relations yet.',
+  noArtifacts: 'No research artifacts yet.',
+  memoryDeferred: 'Memory review arrives in Phase 5.',
   ideaMeta: '{status} · v{version}',
 } satisfies Record<ResearchWorkspaceKey, string>
 
@@ -125,7 +147,7 @@ const ja = {
   updated: '更新', version: 'バージョン', researchQuestion: '研究課題', summary: '現在の要約',
   objectives: '研究目的', parent: '親アイデア', none: 'なし', relationRelated: '関連',
   relationDerived: '派生元', relationMerged: '統合元', relationReferences: '参照',
-  archiveConfirm: 'アーカイブすると既定の一覧から隠れます。履歴は保持されます。続行しますか？', refresh: '更新', showArchived: 'アーカイブを表示', sessions: '研究セッション', newSession: '新しい研究会話', openSession: '会話を開く', noSessions: '研究セッションはまだありません。', inbox: '受信箱', noInbox: '未バインドのセッションはありません。', linkSession: 'Idea にリンク', unlinkSession: 'リンク解除', finalizeSession: '研究を完了', ideaMeta: '{status} · v{version}',
+  archiveConfirm: 'アーカイブすると既定の一覧から隠れます。履歴は保持されます。続行しますか？', refresh: '更新', showArchived: 'アーカイブを表示', sessions: '研究セッション', newSession: '新しい研究会話', openSession: '会話を開く', noSessions: '研究セッションはまだありません。', inbox: '受信箱', noInbox: '未バインドのセッションはありません。', linkSession: 'Idea にリンク', unlinkSession: 'リンク解除', tabOverview: '概要', tabSessions: 'セッション', tabKnowledge: '知識', tabGraph: 'グラフ', tabArtifacts: '成果物', tabMemory: 'メモリ', tabTimeline: 'タイムライン', noKnowledge: '研究エンティティはまだありません。', noGraph: '知識関係はまだありません。', noArtifacts: '研究成果物はまだありません。', memoryDeferred: 'メモリレビューは Phase 5 で提供されます。', finalizeSession: '研究を完了', ideaMeta: '{status} · v{version}',
 } satisfies Record<ResearchWorkspaceKey, string>
 
 const es = {
@@ -139,7 +161,7 @@ const es = {
   updated: 'Actualizado', version: 'Versión', researchQuestion: 'Pregunta de investigación', summary: 'Resumen actual',
   objectives: 'Objetivos', parent: 'Idea padre', none: 'Ninguno', relationRelated: 'Relacionada',
   relationDerived: 'Derivada de', relationMerged: 'Fusionada desde', relationReferences: 'Referencia',
-  archiveConfirm: 'Archivar oculta la Idea de la lista predeterminada; el historial se conserva. ¿Continuar?', refresh: 'Actualizar', showArchived: 'Mostrar archivadas', sessions: 'Sesiones', newSession: 'Nueva sesión', openSession: 'Abrir sesión', noSessions: 'Aún no hay sesiones.', inbox: 'Bandeja de entrada', noInbox: 'No hay sesiones sin vincular.', linkSession: 'Vincular a Idea', unlinkSession: 'Desvincular', finalizeSession: 'Finalizar investigación', ideaMeta: '{status} · v{version}',
+  archiveConfirm: 'Archivar oculta la Idea de la lista predeterminada; el historial se conserva. ¿Continuar?', refresh: 'Actualizar', showArchived: 'Mostrar archivadas', sessions: 'Sesiones', newSession: 'Nueva sesión', openSession: 'Abrir sesión', noSessions: 'Aún no hay sesiones.', inbox: 'Bandeja de entrada', noInbox: 'No hay sesiones sin vincular.', linkSession: 'Vincular a Idea', unlinkSession: 'Desvincular', tabOverview: 'Resumen', tabSessions: 'Sesiones', tabKnowledge: 'Conocimiento', tabGraph: 'Grafo', tabArtifacts: 'Artefactos', tabMemory: 'Memoria', tabTimeline: 'Cronología', noKnowledge: 'Aún no hay entidades.', noGraph: 'Aún no hay relaciones.', noArtifacts: 'Aún no hay artefactos.', memoryDeferred: 'La revisión de memoria llega en la Phase 5.', finalizeSession: 'Finalizar investigación', ideaMeta: '{status} · v{version}',
 } satisfies Record<ResearchWorkspaceKey, string>
 
 const fr = {
@@ -153,7 +175,7 @@ const fr = {
   updated: 'Mis à jour', version: 'Version', researchQuestion: 'Question de recherche', summary: 'Résumé actuel',
   objectives: 'Objectifs', parent: 'Idée parente', none: 'Aucun', relationRelated: 'Liée',
   relationDerived: 'Dérivée de', relationMerged: 'Fusionnée depuis', relationReferences: 'Référence',
-  archiveConfirm: 'Archiver masque l’Idée de la liste par défaut ; l’historique est conservé. Continuer ?', refresh: 'Actualiser', showArchived: 'Afficher les archivées', sessions: 'Sessions', newSession: 'Nouvelle session', openSession: 'Ouvrir la session', noSessions: 'Aucune session.', inbox: 'Boîte de réception', noInbox: 'Aucune session non liée.', linkSession: 'Lier à l’Idée', unlinkSession: 'Délier', finalizeSession: 'Finaliser la recherche', ideaMeta: '{status} · v{version}',
+  archiveConfirm: 'Archiver masque l’Idée de la liste par défaut ; l’historique est conservé. Continuer ?', refresh: 'Actualiser', showArchived: 'Afficher les archivées', sessions: 'Sessions', newSession: 'Nouvelle session', openSession: 'Ouvrir la session', noSessions: 'Aucune session.', inbox: 'Boîte de réception', noInbox: 'Aucune session non liée.', linkSession: 'Lier à l’Idée', unlinkSession: 'Délier', tabOverview: 'Aperçu', tabSessions: 'Sessions', tabKnowledge: 'Connaissances', tabGraph: 'Graphe', tabArtifacts: 'Artefacts', tabMemory: 'Mémoire', tabTimeline: 'Chronologie', noKnowledge: 'Aucune entité de recherche.', noGraph: 'Aucune relation de connaissance.', noArtifacts: 'Aucun artefact de recherche.', memoryDeferred: 'La revue de mémoire arrive en Phase 5.', finalizeSession: 'Finaliser la recherche', ideaMeta: '{status} · v{version}',
 } satisfies Record<ResearchWorkspaceKey, string>
 
 const de = {
@@ -167,7 +189,7 @@ const de = {
   updated: 'Aktualisiert', version: 'Version', researchQuestion: 'Forschungsfrage', summary: 'Aktuelle Zusammenfassung',
   objectives: 'Ziele', parent: 'Übergeordnete Idee', none: 'Keine', relationRelated: 'Verwandt',
   relationDerived: 'Abgeleitet von', relationMerged: 'Zusammengeführt aus', relationReferences: 'Verweist auf',
-  archiveConfirm: 'Archivieren blendet die Idee aus der Standardliste aus; der Verlauf bleibt erhalten. Fortfahren?', refresh: 'Aktualisieren', showArchived: 'Archivierte anzeigen', sessions: 'Sitzungen', newSession: 'Neue Sitzung', openSession: 'Sitzung öffnen', noSessions: 'Noch keine Sitzungen.', inbox: 'Posteingang', noInbox: 'Keine ungebundenen Sitzungen.', linkSession: 'Mit Idee verknüpfen', unlinkSession: 'Verknüpfung lösen', finalizeSession: 'Forschung abschließen', ideaMeta: '{status} · v{version}',
+  archiveConfirm: 'Archivieren blendet die Idee aus der Standardliste aus; der Verlauf bleibt erhalten. Fortfahren?', refresh: 'Aktualisieren', showArchived: 'Archivierte anzeigen', sessions: 'Sitzungen', newSession: 'Neue Sitzung', openSession: 'Sitzung öffnen', noSessions: 'Noch keine Sitzungen.', inbox: 'Posteingang', noInbox: 'Keine ungebundenen Sitzungen.', linkSession: 'Mit Idee verknüpfen', unlinkSession: 'Verknüpfung lösen', tabOverview: 'Übersicht', tabSessions: 'Sitzungen', tabKnowledge: 'Wissen', tabGraph: 'Graph', tabArtifacts: 'Artefakte', tabMemory: 'Gedächtnis', tabTimeline: 'Zeitleiste', noKnowledge: 'Noch keine Forschungsobjekte.', noGraph: 'Noch keine Wissensbeziehungen.', noArtifacts: 'Noch keine Forschungsartefakte.', memoryDeferred: 'Die Gedächtnisprüfung folgt in Phase 5.', finalizeSession: 'Forschung abschließen', ideaMeta: '{status} · v{version}',
 } satisfies Record<ResearchWorkspaceKey, string>
 
 const ru = {
@@ -181,7 +203,7 @@ const ru = {
   updated: 'Обновлено', version: 'Версия', researchQuestion: 'Исследовательский вопрос', summary: 'Текущее резюме',
   objectives: 'Цели', parent: 'Родительская Идея', none: 'Нет', relationRelated: 'Связана',
   relationDerived: 'Производная от', relationMerged: 'Объединена из', relationReferences: 'Ссылается на',
-  archiveConfirm: 'Архивирование скроет Идею из списка; история сохранится. Продолжить?', refresh: 'Обновить', showArchived: 'Показать архивные', sessions: 'Сессии', newSession: 'Новая сессия', openSession: 'Открыть сессию', noSessions: 'Сессий пока нет.', inbox: 'Входящие', noInbox: 'Нет непривязанных сессий.', linkSession: 'Связать с Идеей', unlinkSession: 'Отвязать', finalizeSession: 'Завершить исследование', ideaMeta: '{status} · v{version}',
+  archiveConfirm: 'Архивирование скроет Идею из списка; история сохранится. Продолжить?', refresh: 'Обновить', showArchived: 'Показать архивные', sessions: 'Сессии', newSession: 'Новая сессия', openSession: 'Открыть сессию', noSessions: 'Сессий пока нет.', inbox: 'Входящие', noInbox: 'Нет непривязанных сессий.', linkSession: 'Связать с Идеей', unlinkSession: 'Отвязать', tabOverview: 'Обзор', tabSessions: 'Сессии', tabKnowledge: 'Знания', tabGraph: 'Граф', tabArtifacts: 'Артефакты', tabMemory: 'Память', tabTimeline: 'Хронология', noKnowledge: 'Сущностей пока нет.', noGraph: 'Связей знаний пока нет.', noArtifacts: 'Артефактов пока нет.', memoryDeferred: 'Проверка памяти появится в Phase 5.', finalizeSession: 'Завершить исследование', ideaMeta: '{status} · v{version}',
 } satisfies Record<ResearchWorkspaceKey, string>
 
 const pt = {
@@ -195,7 +217,7 @@ const pt = {
   updated: 'Atualizado', version: 'Versão', researchQuestion: 'Pergunta de pesquisa', summary: 'Resumo atual',
   objectives: 'Objetivos', parent: 'Ideia pai', none: 'Nenhum', relationRelated: 'Relacionada',
   relationDerived: 'Derivada de', relationMerged: 'Mesclada de', relationReferences: 'Referencia',
-  archiveConfirm: 'Arquivar oculta a Ideia da lista padrão; o histórico é mantido. Continuar?', refresh: 'Atualizar', showArchived: 'Mostrar arquivadas', sessions: 'Sessões', newSession: 'Nova sessão', openSession: 'Abrir sessão', noSessions: 'Ainda não há sessões.', inbox: 'Caixa de entrada', noInbox: 'Nenhuma sessão não vinculada.', linkSession: 'Vincular à Ideia', unlinkSession: 'Desvincular', finalizeSession: 'Finalizar pesquisa', ideaMeta: '{status} · v{version}',
+  archiveConfirm: 'Arquivar oculta a Ideia da lista padrão; o histórico é mantido. Continuar?', refresh: 'Atualizar', showArchived: 'Mostrar arquivadas', sessions: 'Sessões', newSession: 'Nova sessão', openSession: 'Abrir sessão', noSessions: 'Ainda não há sessões.', inbox: 'Caixa de entrada', noInbox: 'Nenhuma sessão não vinculada.', linkSession: 'Vincular à Ideia', unlinkSession: 'Desvincular', tabOverview: 'Visão geral', tabSessions: 'Sessões', tabKnowledge: 'Conhecimento', tabGraph: 'Grafo', tabArtifacts: 'Artefatos', tabMemory: 'Memória', tabTimeline: 'Linha do tempo', noKnowledge: 'Ainda não há entidades.', noGraph: 'Ainda não há relações.', noArtifacts: 'Ainda não há artefatos.', memoryDeferred: 'A revisão de memória chega na Phase 5.', finalizeSession: 'Finalizar pesquisa', ideaMeta: '{status} · v{version}',
 } satisfies Record<ResearchWorkspaceKey, string>
 
 export { ja, es, fr, de, ru, pt }

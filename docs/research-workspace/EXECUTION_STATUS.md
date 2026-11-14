@@ -1,8 +1,8 @@
 # DSH Research Workspace — Execution Status
 
 - 最后更新：2026-11-14
-- 当前 Batch：Batch B / Phase 4（Ready to Start）
-- 已完成 Batch：Batch A（Phase 1–2）
+- 当前 Batch：Batch C / Phase 5（Ready to Start）
+- 已完成 Batch：Batch A（Phase 1–2）、Batch B（Phase 3–4）
 - 开发授权：Phase 1–9 整体授权
 - 执行模式：Batch 验收门禁 + 自动推进
 
@@ -27,10 +27,10 @@
 | Batch A | Completed | Passed（见 `reports/BATCH_A_COMPLETION.md`） |
 | Phase 1 | Completed | Passed |
 | Phase 2 | Completed | Passed |
-| Batch B | In Progress | Phase 3 passed; Phase 4 pending |
+| Batch B | Completed | Passed（见 `reports/BATCH_B_COMPLETION.md`） |
 | Phase 3 | Completed | Passed |
-| Phase 4 | Ready to Start | Pending |
-| Batch C | Pending | Pending |
+| Phase 4 | Completed | Passed |
+| Batch C | Ready to Start | Pending |
 | Phase 5–6 | Pending | Pending |
 | Batch D | Pending | Pending |
 | Phase 7–8 | Pending | Pending |
@@ -68,7 +68,9 @@ Migration v1→v2 升级测试通过；重复打开幂等。
 
 - Batch A 已完成并生成完成报告。
 - Phase 3 已完成并生成 `reports/PHASE_3_COMPLETION.md`。
-- Batch B / Phase 4 尚未开始；下一步实现 Idea Workspace UI 与 artifact Remote 面。
+- Phase 4 已完成：`research.getWorkspace` Remote 与 Idea Workspace 7 个标签页。
+- Batch B 已完成并生成 `reports/BATCH_B_COMPLETION.md`。
+- 下一步进入 Batch C / Phase 5：Memory Manager。
 
 ## 6. 验收证据
 
@@ -77,7 +79,7 @@ corepack pnpm exec vitest run \
   packages/research/research-core/tests \
   packages/research/research-tools/tests \
   packages/client/ui-research-workspace/tests
-# 10 files, 53 tests passed
+# 10 files, 54 tests passed
 ```
 
 ```sh
@@ -105,12 +107,12 @@ corepack pnpm run verify-tool-catalog
 - `agent/created` fallback 安装失败目前只记录 Host warning，未向用户显示 notice。
 - Session event 处理是单进程串行 outbox pump；多进程并发不在 Phase 2 v1 范围。
 - Outbox gap 重试使用 1 秒 timer；跨进程 gap 依赖下次启动 reconciliation 补齐。
-- `research_branches`、Research Session title/preset 选择、UI Workspace 选择器尚未实现。
-- 当前 Git 工作区在 Batch A 实现后尚未提交；需要提交并推送后作为可追溯基线。
+- Research Session title/preset 选择、UI Workspace 选择器尚未实现。
+- Batch A / Phase 2 已推送（`4fd8c4ec`）；Phase 3 已推送（`93ea03e9`）；Batch B（Phase 4）已本地提交，GitHub 推送因网络 TLS 失败待重试。
 - `hygiene` 已完成：23/23 gate 通过；Phase 1 遗留的 locale metadata、Client UI 硬编码文案和可选产品包分类已补齐。
 
 ## 8. 下一步
 
-1. 提交并推送 Batch A 实现。
-2. 开始 Batch B / Phase 3：Research Artifact Database。
-3. Phase 3 通过验收后进入 Phase 4，再进入 Batch C。
+1. 提交并推送 Batch B（Phase 3–4）实现与报告。
+2. 开始 Batch C / Phase 5：Memory Manager。
+3. Phase 5 通过验收后进入 Phase 6，再进入 Batch D。

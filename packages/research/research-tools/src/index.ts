@@ -42,6 +42,10 @@ import type {
   ListResearchSessionsRequest,
   RemoveIdeaRelationRequest,
   ResearchSessionDetailView,
+  ResearchWorkspaceRequest,
+  ResearchWorkspaceView,
+  WorkspaceEntityView,
+  WorkspaceRelationView,
   ResearchSessionView,
   TimelineEventView,
   TimelineRequest,
@@ -131,6 +135,32 @@ function toTimelineView(event: ResearchTimelineEvent): TimelineEventView {
     summary: event.summary,
     payload: event.payload,
     createdAt: event.createdAt,
+  }
+}
+
+/**
+ * Build one compact workspace row.
+ * @param kind - entity kind.
+ * @param id - domain identity.
+ * @param title - display title.
+ * @param createdAt - creation timestamp.
+ * @param options - optional status and update timestamp.
+ * @returns the wire row.
+ */
+function toWorkspaceEntity(
+  kind: string,
+  id: string,
+  title: string,
+  createdAt: number,
+  options: { status?: string; updatedAt?: number } = {},
+): WorkspaceEntityView {
+  return {
+    id,
+    kind,
+    title,
+    ...options.status === undefined ? {} : { status: options.status },
+    createdAt,
+    ...options.updatedAt === undefined ? {} : { updatedAt: options.updatedAt },
   }
 }
 
@@ -416,6 +446,64 @@ export default class ResearchController extends TypertRemoteService {
   listTimeline(request: TimelineRequest): TimelineEventView[] {
     try {
       return this.ctx.researchCore.listTimeline(IdeaId(request.ideaId), request.limit).map(toTimelineView)
+    } catch (error) {
+      throwRemote(error)
+    }
+  }
+
+  /**
+   * Read the Phase 3 workspace projection for one Idea.
+   * @param request - Idea identity.
+   * @returns counts, compact entity rows, relations, Sessions, and timeline.
+   */
+  @Remote('getWorkspace')
+  getWorkspace(request: ResearchWorkspaceRequest): ResearchWorkspaceView {
+    try {
+      const ideaId = IdeaId(request.ideaId)
+      const core = this.ctx.researchCore
+      const store = core.artifacts
+      const entities: WorkspaceEntityView[] = [
+        ...store.listSources(ideaId).map(source => toWorkspaceEntity('source', source.id, source.title, source.createdAt,
+          { status: source.status, updatedAt: source.updatedAt })),
+        ...store.listConcepts(ideaId).map(concept => toWorkspaceEntity('concept', concept.id, concept.name, concept.createdAt,
+          { status: concept.status, updatedAt: concept.updatedAt })),
+        ...store.listClaims(ideaId).map(claim => toWorkspaceEntity('claim', claim.id, claim.statement, claim.createdAt,
+          { status: claim.status, updatedAt: claim.updatedAt })),
+        ...store.listEvidence(ideaId).map(evidence => toWorkspaceEntity('evidence', evidence.id,
+          evidence.quote === '' ? `Evidence (${evidence.evidenceType})` : evidence.quote, evidence.createdAt,
+          { status: evidence.epistemicStatus, updatedAt: evidence.updatedAt })),
+        ...store.listQuestions(ideaId).map(question => toWorkspaceEntity('question', question.id, question.question,
+          question.createdAt, { status: question.status, updatedAt: question.updatedAt })),
+        ...store.listGaps(ideaId).map(gap => toWorkspaceEntity('gap', gap.id, gap.gapDescription, gap.createdAt,
+          { status: gap.status, updatedAt: gap.updatedAt })),
+        ...store.listHypotheses(ideaId).map(hypothesis => toWorkspaceEntity('hypothesis', hypothesis.id, hypothesis.title,
+          hypothesis.createdAt, { status: hypothesis.status, updatedAt: hypothesis.updatedAt })),
+        ...store.listDiscoveries(ideaId).map(discovery => toWorkspaceEntity('discovery', discovery.id, discovery.description,
+          discovery.createdAt, { status: discovery.status, updatedAt: discovery.updatedAt })),
+        ...store.listDecisions(ideaId).map(decision => toWorkspaceEntity('decision', decision.id, decision.title,
+          decision.createdAt)),
+        ...store.listArtifacts(ideaId).map(artifact => toWorkspaceEntity('artifact', artifact.id, artifact.title,
+          artifact.createdAt, { status: artifact.status, updatedAt: artifact.updatedAt })),
+        ...store.listBranches(ideaId).map(branch => toWorkspaceEntity('branch', branch.id, branch.title,
+          branch.createdAt, { status: branch.status, updatedAt: branch.updatedAt })),
+      ]
+      const relations: WorkspaceRelationView[] = store.listKnowledgeRelations(ideaId).map(relation => ({
+        id: relation.id,
+        fromEntityType: relation.fromEntityType,
+        fromEntityId: relation.fromEntityId,
+        toEntityType: relation.toEntityType,
+        toEntityId: relation.toEntityId,
+        relationType: relation.relationType,
+        confidence: relation.confidence,
+        status: relation.status,
+      }))
+      return {
+        counts: store.countEntities(ideaId),
+        entities,
+        relations,
+        sessions: core.sessionBindings.listSessions(ideaId).map(toSessionView),
+        timeline: core.ideas.listTimeline(ideaId).map(toTimelineView),
+      }
     } catch (error) {
       throwRemote(error)
     }

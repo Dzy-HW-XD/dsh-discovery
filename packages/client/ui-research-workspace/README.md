@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-client-ui-research-workspace` adds one sidebar entry and one main panel to the existing DSH Web client. The panel lists research Ideas, creates them, shows their detail, status, relations, timeline, research Sessions, and unbound Inbox Sessions. It reads and writes through the generated `research` Remote namespace, so the dashboard reflects Host database state rather than hardcoded records.
+`dsh-client-ui-research-workspace` adds one sidebar entry and one main panel to the existing DSH Web client. The panel lists research Ideas, creates them, shows their detail, status, relations, an Overview, Knowledge, Graph, Artifacts, Memory placeholder, Timeline, research Sessions, and unbound Inbox Sessions. It reads and writes through the generated `research` Remote namespace, so the dashboard reflects Host database state rather than hardcoded records.
 
 ## Table of Contents
 
@@ -39,6 +39,8 @@ The plugin registers `main` key `research` and a `sidebar.panellist` entry with 
 - Status changes use the Host transition table; archive asks for confirmation and keeps the Idea in the explicit archived list.
 - Relation editing supports `related_to`, `derived_from`, `merged_from`, and `references`; parent/child is set through the Idea parent field.
 - Research Sessions can be created under the selected Idea, opened in the native Conversation panel, unlinked back to the Inbox, or finalized.
+- Workspace tabs read the Phase 3 projection from `research.getWorkspace`; Knowledge and Graph group Sources, Concepts, Claims, Evidence, Questions, Gaps, Hypotheses, Discoveries, Decisions, and Branches.
+- The Memory tab is an explicit empty state until Phase 5; it does not fabricate records.
 - Inbox Sessions can be linked to the selected Idea without replacing the native Session list.
 
 -----
@@ -61,7 +63,8 @@ No model request changes, so the dashboard adds no cacheable prefix.
 
 ## Known Limitations and Deferred Work
 
-- Phase 2 has no Hypotheses, Knowledge, Discoveries, Artifacts, or Memory tabs; those arrive with later phases.
+- Phase 4 renders Phase 3 entities but does not edit or create them from the panel; the scoped tools own writes.
+- The Memory tab is a placeholder; memory review arrives in Phase 5.
 - The panel refreshes after each mutation and does not yet subscribe to the forwarded `research/changed` event.
 - Relation creation uses the selected Idea as the source; there is no bulk relation editor or graph view.
 - Session detail shows binding status and checkpoint data only through the Remote API; the panel does not yet render a full Session inspector.

@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 摘要
 
-`dsh-client-ui-research-workspace` 在现有 DSH Web 客户端中增加一个侧边栏入口和一个主面板。面板列出研究 Idea、创建它们，展示详情、状态、关系、时间线、研究会话与未绑定 Inbox 会话。它通过生成的 `research` Remote 命名空间读写，因此仪表盘反映 Host 数据库状态，而不是硬编码记录。
+`dsh-client-ui-research-workspace` 在现有 DSH Web 客户端中增加一个侧边栏入口和一个主面板。面板列出研究 Idea、创建它们，展示详情、状态、关系、概览、知识、图谱、产出、记忆占位、时间线、研究会话与未绑定 Inbox 会话。它通过生成的 `research` Remote 命名空间读写，因此仪表盘反映 Host 数据库状态，而不是硬编码记录。
 
 ## 目录
 
@@ -41,6 +41,8 @@ kind: "package-reference"
 - 状态变更使用 Host 转换表；归档会要求确认，并把 Idea 保留在显式归档列表中。
 - 关系编辑支持 `related_to`、`derived_from`、`merged_from` 和 `references`；父子关系通过 Idea 父级字段设置。
 - 可以在当前 Idea 下创建研究会话、在原生 Conversation 面板打开、解绑回 Inbox，或标记完成。
+- Workspace 标签页通过 `research.getWorkspace` 读取 Phase 3 投影；Knowledge 与 Graph 分组展示 Source、Concept、Claim、Evidence、Question、Gap、Hypothesis、Discovery、Decision 与 Branch。
+- Memory 标签页在 Phase 5 前是明确的空状态，不伪造记录。
 - Inbox 会话可以绑定到当前 Idea，同时保留原生 Session 列表。
 
 -----
@@ -69,7 +71,8 @@ No model request changes, so the dashboard adds no cacheable prefix.
 
 ## 已知限制与延后工作
 
-- Phase 2 没有 Hypotheses、Knowledge、Discoveries、Artifacts 或 Memory 标签页；这些随后续阶段到来。
+- Phase 4 展示 Phase 3 实体，但面板不编辑或创建它们；写入由作用域工具负责。
+- Memory 标签页是占位；记忆审查在 Phase 5 到来。
 - 面板在每次变更后刷新，尚未订阅已转发的 `research/changed` 事件。
 - 关系创建把当前选中的 Idea 作为 source；没有批量关系编辑器或图视图。
 - 会话详情目前只通过 Remote API 暴露绑定状态和 checkpoint；面板尚未渲染完整 Session inspector。

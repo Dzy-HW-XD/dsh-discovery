@@ -201,3 +201,39 @@ export interface FinalizeResearchSessionRequest {
   readonly sessionId: string
   readonly summary?: string
 }
+
+/** One compact entity row in the Idea Workspace. */
+export interface WorkspaceEntityView {
+  readonly id: string
+  readonly kind: string
+  readonly title: string
+  readonly status?: string
+  readonly createdAt: number
+  readonly updatedAt?: number
+}
+
+/** One knowledge relation row in the Idea Workspace. */
+export interface WorkspaceRelationView {
+  readonly id: string
+  readonly fromEntityType: string
+  readonly fromEntityId: string
+  readonly toEntityType: string
+  readonly toEntityId: string
+  readonly relationType: string
+  readonly confidence: number
+  readonly status: string
+}
+
+/** Read the Phase 3 workspace projection for one Idea. */
+export interface ResearchWorkspaceRequest {
+  readonly ideaId: string
+}
+
+/** One Idea Workspace projection. Counts and rows come from the Research DB. */
+export interface ResearchWorkspaceView {
+  readonly counts: Readonly<Record<string, number>>
+  readonly entities: readonly WorkspaceEntityView[]
+  readonly relations: readonly WorkspaceRelationView[]
+  readonly sessions: readonly ResearchSessionView[]
+  readonly timeline: readonly TimelineEventView[]
+}

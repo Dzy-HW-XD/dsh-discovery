@@ -30,7 +30,7 @@ Mount the plugin after `dsh-research-core` and the tool runtime are present. It 
 
 ### Remote operations
 
-`listIdeas`, `getIdea`, `createIdea`, `updateIdea`, `archiveIdea`, `addIdeaRelation`, `removeIdeaRelation`, `listIdeaRelations`, `listTimeline`, and the Phase 2 Session operations `createSession`, `listSessions`, `listInboxSessions`, `getSession`, `linkSession`, `unlinkSession`, and `finalizeSession`. Failures use stable `research/*` codes, including `research/version-conflict`, `research/invalid-transition`, `research/event-gap`, and `research/session-not-found`.
+`listIdeas`, `getIdea`, `createIdea`, `updateIdea`, `archiveIdea`, `addIdeaRelation`, `removeIdeaRelation`, `listIdeaRelations`, `listTimeline`, the Phase 2 Session operations `createSession`, `listSessions`, `listInboxSessions`, `getSession`, `linkSession`, `unlinkSession`, `finalizeSession`, and `getWorkspace` for the Phase 4 Idea Workspace projection. Failures use stable `research/*` codes, including `research/version-conflict`, `research/invalid-transition`, `research/event-gap`, and `research/session-not-found`.
 
 ### Model tool
 

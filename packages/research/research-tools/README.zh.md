@@ -32,7 +32,7 @@ kind: "package-reference"
 
 ### Remote 操作
 
-`listIdeas`、`getIdea`、`createIdea`、`updateIdea`、`archiveIdea`、`addIdeaRelation`、`removeIdeaRelation`、`listIdeaRelations`、`listTimeline`，以及 Phase 2 的 `createSession`、`listSessions`、`listInboxSessions`、`getSession`、`linkSession`、`unlinkSession` 和 `finalizeSession`。失败使用稳定的 `research/*` 代码，包括 `research/version-conflict`、`research/invalid-transition`、`research/event-gap` 和 `research/session-not-found`。
+`listIdeas`、`getIdea`、`createIdea`、`updateIdea`、`archiveIdea`、`addIdeaRelation`、`removeIdeaRelation`、`listIdeaRelations`、`listTimeline`，Phase 2 的 `createSession`、`listSessions`、`listInboxSessions`、`getSession`、`linkSession`、`unlinkSession`、`finalizeSession`，以及 Phase 4 Idea Workspace 投影 `getWorkspace`。失败使用稳定的 `research/*` 代码，包括 `research/version-conflict`、`research/invalid-transition`、`research/event-gap` 和 `research/session-not-found`。
 
 ### 模型工具
 
