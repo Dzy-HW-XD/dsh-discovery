@@ -17,6 +17,7 @@ import ResearchCore, {
   type ResearchSessionBinding,
 } from '@deepseek-ai/dsh-research-core'
 import { toCheckpointView, toSessionView } from './views.ts'
+import { researchArtifactTools } from './artifact-tools.ts'
 import type { ResearchSessionDetailView } from './types.ts'
 
 const PROTOCOL = `You are working inside a long-lived Research Idea.
@@ -157,6 +158,9 @@ export class ResearchComposition {
       disposers.push(agentCtx.systemPrompt.section({ name: 'research:protocol', order: 500, text: PROTOCOL }))
       disposers.push(agentCtx.systemPrompt.context({ name: 'research:idea-brief', order: 500, required: true, text: brief }))
       disposers.push(agentCtx.tools.register(researchSessionTool(this.core, agent.id)))
+      for (const tool of researchArtifactTools(this.core, agent.id)) {
+        disposers.push(agentCtx.tools.register(tool))
+      }
     } catch (error: unknown) {
       for (const dispose of disposers.reverse()) {
         try { dispose() } catch { /* setup rollback already owns the primary failure */ }

@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
-import { createUserMessage, LlmAdapter, type GenerateOptions, type LlmResolvedModelInfo, type StreamChunk } from '@deepseek-ai/dsh-llm'
+import { ToolCallId, createUserMessage, LlmAdapter, type GenerateOptions, type LlmResolvedModelInfo, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import ResearchCore, { IdeaId } from '@deepseek-ai/dsh-research-core'
@@ -101,7 +101,11 @@ describe('Research Session lifecycle', () => {
     await agent!.whenIdle()
     expect(prompt(adapter, 0)).toContain('Bounded Activation')
     expect(prompt(adapter, 0)).toContain('Does clamping reduce SDC propagation?')
-    expect(toolNames(adapter, 0)).toContain('research_session')
+    expect(toolNames(adapter, 0)).toEqual(expect.arrayContaining([
+      'research_session', 'research_source', 'research_concept', 'research_claim', 'research_evidence', 'research_graph',
+      'research_question', 'research_gap', 'research_hypothesis', 'research_discovery',
+      'research_artifact', 'research_branch', 'research_decision',
+    ]))
     expect(controller.listSessions({ ideaId: idea.id })).toHaveLength(1)
     await ctx.researchCore.events.flush()
     const checkpoint = controller.getSession({ sessionId: binding.sessionId })?.checkpoint
@@ -213,6 +217,75 @@ describe('Research Session lifecycle', () => {
     } as never)
     const binding = await controller.createSession({ ideaId: idea.id, workspaceId: 'workspace-1' })
     expect(attachSession).toHaveBeenCalledWith(binding.sessionId)
+  })
+
+  it('creates and queries Phase 3 artifacts through the scoped tools', async () => {
+    const { ctx, controller } = await bench()
+    const idea = controller.createIdea({ title: 'Tool Artifacts' })
+    const binding = await controller.createSession({ ideaId: idea.id, cwd: tmpdir() })
+    const agent = ctx.agents.get(SessionId(binding.sessionId))
+    expect(agent).toBeDefined()
+    let call = 0
+    const invoke = async (name: string, args: Record<string, unknown>): Promise<void> => {
+      await ctx.tools.execute({
+        agent: agent!,
+        signal: new AbortController().signal,
+        log: { turn: 1, step: 1 },
+        calls: [{
+          type: 'tool-call',
+          id: ToolCallId(`artifact-call-${call++}`),
+          name,
+          arguments: JSON.stringify(args),
+        }],
+      })
+    }
+    await invoke('research_source', {
+      action: 'import', ideaId: idea.id, title: 'Mock Source', sourceType: 'web', url: 'https://example.com/mock',
+    })
+    const source = ctx.researchCore.artifacts.listSources(IdeaId(idea.id))[0]
+    expect(source).toBeDefined()
+    await invoke('research_source', {
+      action: 'locate', ideaId: idea.id, sourceId: source!.id, locatorType: 'url_fragment', locator: '#result', quote: 'quoted result',
+    })
+    await invoke('research_claim', {
+      action: 'create', ideaId: idea.id, statement: 'The mock result supports bounded activation.',
+      epistemicStatus: 'reported', sourceIds: [source!.id],
+    })
+    const claim = ctx.researchCore.artifacts.listClaims(IdeaId(idea.id))[0]
+    expect(claim).toMatchObject({ origin: { originSessionId: binding.sessionId, originToolCallId: 'artifact-call-2' } })
+    await invoke('research_evidence', {
+      action: 'create', ideaId: idea.id, sourceId: source!.id, claimId: claim!.id,
+      evidenceType: 'supports', quote: 'quoted result',
+    })
+    const evidence = ctx.researchCore.artifacts.listEvidence(IdeaId(idea.id))[0]
+    await invoke('research_graph', {
+      action: 'relate', ideaId: idea.id, fromEntityType: 'evidence', fromEntityId: evidence!.id,
+      toEntityType: 'claim', toEntityId: claim!.id, relationType: 'supports',
+    })
+    await invoke('research_hypothesis', {
+      action: 'create', ideaId: idea.id, title: 'Tool hypothesis', description: 'Created through the scoped tool.',
+    })
+    await invoke('research_artifact', {
+      action: 'create', ideaId: idea.id, artifactType: 'markdown', title: 'Tool report', content: '# Tool report',
+    })
+    await invoke('research_question', { action: 'create', ideaId: idea.id, question: 'Does the tool path persist?' })
+    await invoke('research_gap', {
+      action: 'create', ideaId: idea.id, gapType: 'knowledge_gap', gapDescription: 'No tool-path coverage',
+    })
+    await invoke('research_discovery', {
+      action: 'create', ideaId: idea.id, discoveryType: 'other', description: 'Tool path discovery',
+    })
+    await invoke('research_decision', {
+      action: 'create', ideaId: idea.id, title: 'Keep tool path', decision: 'Retain the scoped tools',
+    })
+    await invoke('research_branch', { action: 'create', ideaId: idea.id, title: 'Tool branch' })
+    await invoke('research_graph', { action: 'entities', ideaId: idea.id })
+    expect(ctx.researchCore.artifacts.countEntities(IdeaId(idea.id))).toMatchObject({
+      sources: 1, claims: 1, evidence: 1, relations: 1, questions: 1, gaps: 1,
+      hypotheses: 1, discoveries: 1, decisions: 1, artifacts: 1, branches: 1,
+    })
+    const artifact = ctx.researchCore.artifacts.listArtifacts(IdeaId(idea.id))[0]
+    expect(ctx.researchCore.artifacts.verifyArtifact(artifact!.id).valid).toBe(true)
   })
 
 })

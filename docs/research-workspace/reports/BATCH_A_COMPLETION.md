@@ -71,7 +71,7 @@ Migration 可从既有 v1 数据库升级；`research_schema_migrations` 记录 
 - `tsconfig.host.json` — 根聚合改为引用 research-tools Host 面。
 - `packages/research/research-core/locale/*.json`、`packages/research/research-tools/locale/*.json`、`packages/client/ui-research-workspace/locale/*.json` — 8 种发布语言的插件元数据。
 - `scripts/product-package-policy.ts` — 将 Research Core、Research UI 与 Research Bundle 声明为可选产品包。
-- `scripts/rescope-vendor.ts` — 跳过 `cordis` preset id 的误报，并对齐 vendored README 的 V17 标记。
+- `scripts/rescope-vendor.ts` — 跳过 cordis preset id 的误报，并对齐 vendored README 的 V17 标记。
 - `packages/client/ui-research-workspace/src/client/ResearchPanel.tsx` — Session/Inbox UI。
 - `packages/client/ui-research-workspace/src/client/index.ts` — Session Remote wiring、`uiWorkspace.openSession`。
 - `packages/client/ui-research-workspace/src/client/locales.ts` — Session/Inbox 文案。

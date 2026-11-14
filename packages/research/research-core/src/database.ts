@@ -12,10 +12,10 @@ import { DatabaseSync } from 'node:sqlite'
 import { ResearchError } from './errors.ts'
 
 /** Physical database layout version, independent of business migrations. */
-export const RESEARCH_DATABASE_LAYOUT_VERSION = 2
+export const RESEARCH_DATABASE_LAYOUT_VERSION = 3
 
 /** Business schema version written by the latest migration. */
-export const RESEARCH_SCHEMA_VERSION = 2
+export const RESEARCH_SCHEMA_VERSION = 3
 
 const MIGRATION_1 = `
 CREATE TABLE research_ideas (
@@ -157,6 +157,377 @@ ALTER TABLE research_idea_relations ADD COLUMN metadata_json TEXT NOT NULL DEFAU
 ALTER TABLE research_timeline_events ADD COLUMN session_id TEXT;
 `
 
+
+const MIGRATION_3 = `
+CREATE TABLE research_branches (
+  id                TEXT PRIMARY KEY,
+  idea_id           TEXT NOT NULL REFERENCES research_ideas(id) ON DELETE RESTRICT,
+  parent_branch_id  TEXT REFERENCES research_branches(id) ON DELETE RESTRICT,
+  title             TEXT NOT NULL,
+  description       TEXT NOT NULL DEFAULT '',
+  status            TEXT NOT NULL DEFAULT 'active'
+                    CHECK (status IN ('active','paused','merged','split','rejected','promoted_to_idea')),
+  merged_into_id    TEXT REFERENCES research_branches(id) ON DELETE RESTRICT,
+  created_at        INTEGER NOT NULL,
+  updated_at        INTEGER NOT NULL,
+  version           INTEGER NOT NULL DEFAULT 1
+) STRICT;
+
+CREATE INDEX idx_branches_idea_status ON research_branches(idea_id, status, updated_at DESC);
+
+ALTER TABLE research_sessions ADD COLUMN branch_id TEXT REFERENCES research_branches(id) ON DELETE RESTRICT;
+ALTER TABLE research_timeline_events ADD COLUMN branch_id TEXT REFERENCES research_branches(id) ON DELETE RESTRICT;
+
+CREATE TABLE research_sources (
+  id              TEXT PRIMARY KEY,
+  origin_idea_id  TEXT REFERENCES research_ideas(id) ON DELETE RESTRICT,
+  source_type     TEXT NOT NULL
+                  CHECK (source_type IN ('paper','preprint','web','documentation','repository','book','dataset','other')),
+  title           TEXT NOT NULL,
+  authors_json    TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(authors_json)),
+  year            INTEGER,
+  venue           TEXT,
+  doi             TEXT,
+  arxiv_id        TEXT,
+  url             TEXT,
+  canonical_url   TEXT,
+  abstract        TEXT,
+  metadata_json   TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(metadata_json)),
+  content_hash    TEXT,
+  retrieved_at    INTEGER,
+  status          TEXT NOT NULL DEFAULT 'active'
+                  CHECK (status IN ('active','archived','retracted','unavailable')),
+  created_at      INTEGER NOT NULL,
+  updated_at      INTEGER NOT NULL,
+  version         INTEGER NOT NULL DEFAULT 1
+) STRICT;
+
+CREATE UNIQUE INDEX ux_sources_doi ON research_sources(doi) WHERE doi IS NOT NULL;
+CREATE UNIQUE INDEX ux_sources_arxiv ON research_sources(arxiv_id) WHERE arxiv_id IS NOT NULL;
+CREATE INDEX idx_sources_origin ON research_sources(origin_idea_id, created_at DESC);
+
+CREATE TABLE research_idea_sources (
+  idea_id      TEXT NOT NULL REFERENCES research_ideas(id) ON DELETE RESTRICT,
+  source_id    TEXT NOT NULL REFERENCES research_sources(id) ON DELETE RESTRICT,
+  relevance    TEXT NOT NULL DEFAULT 'cited'
+               CHECK (relevance IN ('primary','cited','context','rejected')),
+  note         TEXT NOT NULL DEFAULT '',
+  added_at     INTEGER NOT NULL,
+  PRIMARY KEY (idea_id, source_id)
+) STRICT;
+
+CREATE INDEX idx_idea_sources_source ON research_idea_sources(source_id);
+
+CREATE TABLE research_source_locations (
+  id            TEXT PRIMARY KEY,
+  source_id     TEXT NOT NULL REFERENCES research_sources(id) ON DELETE RESTRICT,
+  locator_type  TEXT NOT NULL
+                CHECK (locator_type IN ('page','section','paragraph','line','url_fragment','char_range','figure','table')),
+  locator       TEXT NOT NULL,
+  page          INTEGER,
+  char_start    INTEGER,
+  char_end      INTEGER,
+  quote         TEXT NOT NULL DEFAULT '',
+  created_at    INTEGER NOT NULL
+) STRICT;
+
+CREATE INDEX idx_source_locations_source ON research_source_locations(source_id);
+
+CREATE TABLE research_concepts (
+  id                 TEXT PRIMARY KEY,
+  idea_id            TEXT NOT NULL REFERENCES research_ideas(id) ON DELETE RESTRICT,
+  name               TEXT NOT NULL,
+  definition         TEXT NOT NULL DEFAULT '',
+  aliases_json       TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(aliases_json)),
+  parent_concept_id  TEXT REFERENCES research_concepts(id) ON DELETE RESTRICT,
+  status             TEXT NOT NULL DEFAULT 'active'
+                     CHECK (status IN ('active','merged','deprecated')),
+  created_at         INTEGER NOT NULL,
+  updated_at         INTEGER NOT NULL,
+  version            INTEGER NOT NULL DEFAULT 1
+) STRICT;
+
+CREATE UNIQUE INDEX ux_concepts_idea_name ON research_concepts(idea_id, name);
+
+CREATE TABLE research_claims (
+  id                    TEXT PRIMARY KEY,
+  idea_id               TEXT NOT NULL REFERENCES research_ideas(id) ON DELETE RESTRICT,
+  statement             TEXT NOT NULL,
+  normalized_statement  TEXT NOT NULL DEFAULT '',
+  epistemic_status      TEXT NOT NULL DEFAULT 'reported'
+                        CHECK (epistemic_status IN ('observed','reported','inferred','speculative','disputed','rejected')),
+  confidence            REAL NOT NULL DEFAULT 0.5 CHECK (confidence >= 0 AND confidence <= 1),
+  status                TEXT NOT NULL DEFAULT 'active'
+                        CHECK (status IN ('active','disputed','rejected','superseded','archived')),
+  source_ids_json       TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(source_ids_json)),
+  origin_session_id     TEXT REFERENCES research_sessions(session_id) ON DELETE RESTRICT,
+  origin_event_seq      INTEGER,
+  origin_tool_call_id   TEXT,
+  content_hash          TEXT NOT NULL,
+  supersedes_id         TEXT REFERENCES research_claims(id) ON DELETE RESTRICT,
+  created_at            INTEGER NOT NULL,
+  updated_at            INTEGER NOT NULL,
+  version               INTEGER NOT NULL DEFAULT 1
+) STRICT;
+
+CREATE UNIQUE INDEX ux_claims_tool_call ON research_claims(origin_tool_call_id) WHERE origin_tool_call_id IS NOT NULL;
+CREATE INDEX idx_claims_idea_status ON research_claims(idea_id, status, updated_at DESC);
+CREATE INDEX idx_claims_hash ON research_claims(content_hash);
+
+CREATE TABLE research_claim_versions (
+  id             TEXT PRIMARY KEY,
+  claim_id       TEXT NOT NULL REFERENCES research_claims(id) ON DELETE RESTRICT,
+  version        INTEGER NOT NULL,
+  snapshot_json  TEXT NOT NULL CHECK (json_valid(snapshot_json)),
+  change_reason  TEXT NOT NULL,
+  created_by     TEXT NOT NULL,
+  created_at     INTEGER NOT NULL,
+  UNIQUE (claim_id, version)
+) STRICT;
+
+CREATE INDEX idx_claim_versions_claim ON research_claim_versions(claim_id, version DESC);
+
+CREATE TABLE research_evidence (
+  id                  TEXT PRIMARY KEY,
+  idea_id             TEXT NOT NULL REFERENCES research_ideas(id) ON DELETE RESTRICT,
+  claim_id            TEXT REFERENCES research_claims(id) ON DELETE RESTRICT,
+  source_id           TEXT NOT NULL REFERENCES research_sources(id) ON DELETE RESTRICT,
+  location_id         TEXT REFERENCES research_source_locations(id) ON DELETE RESTRICT,
+  evidence_type       TEXT NOT NULL
+                      CHECK (evidence_type IN ('supports','refutes','context','contradicts')),
+  strength            REAL NOT NULL DEFAULT 0.5 CHECK (strength >= 0 AND strength <= 1),
+  quote               TEXT NOT NULL DEFAULT '',
+  notes               TEXT NOT NULL DEFAULT '',
+  epistemic_status    TEXT NOT NULL DEFAULT 'reported'
+                      CHECK (epistemic_status IN ('observed','reported','inferred','speculative','disputed','rejected')),
+  origin_session_id   TEXT REFERENCES research_sessions(session_id) ON DELETE RESTRICT,
+  origin_event_seq    INTEGER,
+  origin_tool_call_id TEXT,
+  content_hash        TEXT NOT NULL,
+  supersedes_id       TEXT REFERENCES research_evidence(id) ON DELETE RESTRICT,
+  created_at          INTEGER NOT NULL,
+  updated_at          INTEGER NOT NULL,
+  version             INTEGER NOT NULL DEFAULT 1
+) STRICT;
+
+CREATE INDEX idx_evidence_claim ON research_evidence(claim_id, evidence_type);
+CREATE INDEX idx_evidence_source ON research_evidence(source_id);
+
+CREATE TABLE research_relations (
+  id                TEXT PRIMARY KEY,
+  idea_id           TEXT NOT NULL REFERENCES research_ideas(id) ON DELETE RESTRICT,
+  from_entity_type  TEXT NOT NULL,
+  from_entity_id    TEXT NOT NULL,
+  to_entity_type    TEXT NOT NULL,
+  to_entity_id      TEXT NOT NULL,
+  relation_type     TEXT NOT NULL
+                    CHECK (relation_type IN (
+                      'supports','refutes','contradicts','extends','depends_on','equivalent_to',
+                      'specializes','causes','correlates_with','derived_from','analogous_to',
+                      'potentially_related_to')),
+  confidence        REAL NOT NULL DEFAULT 0.5 CHECK (confidence >= 0 AND confidence <= 1),
+  epistemic_status  TEXT NOT NULL DEFAULT 'inferred'
+                    CHECK (epistemic_status IN ('observed','reported','inferred','speculative','disputed','rejected')),
+  source_ids_json   TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(source_ids_json)),
+  origin_session_id TEXT REFERENCES research_sessions(session_id) ON DELETE RESTRICT,
+  origin_event_seq  INTEGER,
+  created_at        INTEGER NOT NULL,
+  status            TEXT NOT NULL DEFAULT 'active'
+                    CHECK (status IN ('active','disputed','rejected','superseded')),
+  CHECK (from_entity_id <> to_entity_id),
+  UNIQUE (idea_id, from_entity_type, from_entity_id, to_entity_type, to_entity_id, relation_type)
+) STRICT;
+
+CREATE INDEX idx_relations_from ON research_relations(from_entity_type, from_entity_id);
+CREATE INDEX idx_relations_to ON research_relations(to_entity_type, to_entity_id);
+
+CREATE TABLE research_questions (
+  id                          TEXT PRIMARY KEY,
+  idea_id                     TEXT NOT NULL REFERENCES research_ideas(id) ON DELETE RESTRICT,
+  branch_id                   TEXT REFERENCES research_branches(id) ON DELETE RESTRICT,
+  question                    TEXT NOT NULL,
+  motivation                  TEXT NOT NULL DEFAULT '',
+  origin                      TEXT NOT NULL DEFAULT 'session'
+                              CHECK (origin IN ('seed','session','gap','discovery','user','critic')),
+  priority                    INTEGER NOT NULL DEFAULT 3 CHECK (priority BETWEEN 1 AND 5),
+  status                      TEXT NOT NULL DEFAULT 'open'
+                              CHECK (status IN ('open','investigating','answered','deferred','rejected')),
+  related_claim_ids_json      TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(related_claim_ids_json)),
+  related_hypothesis_ids_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(related_hypothesis_ids_json)),
+  answer_summary              TEXT NOT NULL DEFAULT '',
+  origin_session_id           TEXT REFERENCES research_sessions(session_id) ON DELETE RESTRICT,
+  origin_event_seq            INTEGER,
+  created_at                  INTEGER NOT NULL,
+  updated_at                  INTEGER NOT NULL,
+  version                     INTEGER NOT NULL DEFAULT 1
+) STRICT;
+
+CREATE INDEX idx_questions_idea_status ON research_questions(idea_id, status, priority, updated_at DESC);
+
+CREATE TABLE research_gaps (
+  id                  TEXT PRIMARY KEY,
+  idea_id             TEXT NOT NULL REFERENCES research_ideas(id) ON DELETE RESTRICT,
+  branch_id           TEXT REFERENCES research_branches(id) ON DELETE RESTRICT,
+  gap_type            TEXT NOT NULL
+                      CHECK (gap_type IN ('literature_gap','knowledge_gap','methodological_gap','contradiction_gap','cross_domain_gap')),
+  gap_description     TEXT NOT NULL,
+  related_work        TEXT NOT NULL DEFAULT '',
+  missing_connection  TEXT NOT NULL DEFAULT '',
+  evidence            TEXT NOT NULL DEFAULT '',
+  novelty_assessment  TEXT NOT NULL DEFAULT '',
+  uncertainty         REAL NOT NULL DEFAULT 0.5 CHECK (uncertainty >= 0 AND uncertainty <= 1),
+  status              TEXT NOT NULL DEFAULT 'candidate'
+                      CHECK (status IN ('candidate','reviewed','accepted','rejected','superseded')),
+  origin_session_id   TEXT REFERENCES research_sessions(session_id) ON DELETE RESTRICT,
+  origin_event_seq    INTEGER,
+  created_at          INTEGER NOT NULL,
+  updated_at          INTEGER NOT NULL,
+  version             INTEGER NOT NULL DEFAULT 1
+) STRICT;
+
+CREATE INDEX idx_gaps_idea_status ON research_gaps(idea_id, status, updated_at DESC);
+
+CREATE TABLE research_hypotheses (
+  id                             TEXT PRIMARY KEY,
+  idea_id                        TEXT NOT NULL REFERENCES research_ideas(id) ON DELETE RESTRICT,
+  branch_id                      TEXT REFERENCES research_branches(id) ON DELETE RESTRICT,
+  title                          TEXT NOT NULL,
+  description                    TEXT NOT NULL,
+  theoretical_reasoning          TEXT NOT NULL DEFAULT '',
+  assumptions_json               TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(assumptions_json)),
+  boundary_conditions_json       TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(boundary_conditions_json)),
+  alternative_explanations_json  TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(alternative_explanations_json)),
+  falsification_conditions_json  TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(falsification_conditions_json)),
+  related_work_json              TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(related_work_json)),
+  status                         TEXT NOT NULL DEFAULT 'candidate'
+                                 CHECK (status IN ('candidate','under_review','supported','disputed','rejected','superseded')),
+  current_version                INTEGER NOT NULL DEFAULT 1,
+  origin_session_id              TEXT REFERENCES research_sessions(session_id) ON DELETE RESTRICT,
+  origin_event_seq               INTEGER,
+  origin_tool_call_id            TEXT,
+  created_at                     INTEGER NOT NULL,
+  updated_at                     INTEGER NOT NULL
+) STRICT;
+
+CREATE INDEX idx_hypotheses_idea_status ON research_hypotheses(idea_id, status, updated_at DESC);
+
+CREATE TABLE research_hypothesis_versions (
+  id             TEXT PRIMARY KEY,
+  hypothesis_id  TEXT NOT NULL REFERENCES research_hypotheses(id) ON DELETE RESTRICT,
+  version        INTEGER NOT NULL,
+  snapshot_json  TEXT NOT NULL CHECK (json_valid(snapshot_json)),
+  change_reason  TEXT NOT NULL DEFAULT '',
+  created_by     TEXT NOT NULL,
+  created_at     INTEGER NOT NULL,
+  UNIQUE (hypothesis_id, version)
+) STRICT;
+
+CREATE TABLE research_hypothesis_evidence (
+  hypothesis_id  TEXT NOT NULL REFERENCES research_hypotheses(id) ON DELETE RESTRICT,
+  evidence_id    TEXT NOT NULL REFERENCES research_evidence(id) ON DELETE RESTRICT,
+  relation       TEXT NOT NULL CHECK (relation IN ('supports','refutes','context')),
+  weight         REAL NOT NULL DEFAULT 1.0 CHECK (weight >= 0 AND weight <= 1),
+  note           TEXT NOT NULL DEFAULT '',
+  created_at     INTEGER NOT NULL,
+  PRIMARY KEY (hypothesis_id, evidence_id, relation)
+) STRICT;
+
+CREATE TABLE research_discoveries (
+  id                            TEXT PRIMARY KEY,
+  idea_id                       TEXT NOT NULL REFERENCES research_ideas(id) ON DELETE RESTRICT,
+  branch_id                     TEXT REFERENCES research_branches(id) ON DELETE RESTRICT,
+  discovery_type                TEXT NOT NULL
+                                CHECK (discovery_type IN ('research_gap','knowledge_bridge','contradiction','counterfactual','novelty','other')),
+  description                   TEXT NOT NULL,
+  reasoning_chain               TEXT NOT NULL DEFAULT '',
+  supporting_entity_ids_json    TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(supporting_entity_ids_json)),
+  contradicting_entity_ids_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(contradicting_entity_ids_json)),
+  novelty_score                 REAL CHECK (novelty_score BETWEEN 0 AND 1),
+  gap_quality_score             REAL CHECK (gap_quality_score BETWEEN 0 AND 1),
+  evidence_quality_score        REAL CHECK (evidence_quality_score BETWEEN 0 AND 1),
+  logical_consistency_score     REAL CHECK (logical_consistency_score BETWEEN 0 AND 1),
+  falsifiability_score          REAL CHECK (falsifiability_score BETWEEN 0 AND 1),
+  potential_impact_score        REAL CHECK (potential_impact_score BETWEEN 0 AND 1),
+  total_score                   REAL CHECK (total_score BETWEEN 0 AND 1),
+  score_explanation_json        TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(score_explanation_json)),
+  reviewer_verdict              TEXT
+                                CHECK (reviewer_verdict IN ('pass','revise','reject','insufficient_evidence')),
+  status                        TEXT NOT NULL DEFAULT 'candidate'
+                                CHECK (status IN ('candidate','reviewed','accepted','rejected','superseded')),
+  origin_session_id             TEXT REFERENCES research_sessions(session_id) ON DELETE RESTRICT,
+  origin_event_seq              INTEGER,
+  created_at                    INTEGER NOT NULL,
+  updated_at                    INTEGER NOT NULL,
+  version                       INTEGER NOT NULL DEFAULT 1
+) STRICT;
+
+CREATE INDEX idx_discoveries_idea_status ON research_discoveries(idea_id, status, total_score DESC);
+
+CREATE TABLE research_decisions (
+  id                TEXT PRIMARY KEY,
+  idea_id           TEXT NOT NULL REFERENCES research_ideas(id) ON DELETE RESTRICT,
+  branch_id         TEXT REFERENCES research_branches(id) ON DELETE RESTRICT,
+  title             TEXT NOT NULL,
+  decision          TEXT NOT NULL,
+  rationale         TEXT NOT NULL DEFAULT '',
+  alternatives_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(alternatives_json)),
+  consequences      TEXT NOT NULL DEFAULT '',
+  origin_session_id TEXT REFERENCES research_sessions(session_id) ON DELETE RESTRICT,
+  origin_event_seq  INTEGER,
+  created_at        INTEGER NOT NULL,
+  created_by        TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE research_artifacts (
+  id                TEXT PRIMARY KEY,
+  idea_id           TEXT NOT NULL REFERENCES research_ideas(id) ON DELETE RESTRICT,
+  branch_id         TEXT REFERENCES research_branches(id) ON DELETE RESTRICT,
+  artifact_type     TEXT NOT NULL
+                    CHECK (artifact_type IN ('research_report','literature_review','technical_analysis','markdown','html','graph_export','diagram','dataset','other')),
+  title             TEXT NOT NULL,
+  path              TEXT,
+  mime_type         TEXT,
+  content_hash      TEXT,
+  size_bytes        INTEGER,
+  markdown          TEXT,
+  metadata_json     TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(metadata_json)),
+  status            TEXT NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending','ready','missing','failed','archived')),
+  origin_session_id TEXT REFERENCES research_sessions(session_id) ON DELETE RESTRICT,
+  origin_event_seq  INTEGER,
+  created_at        INTEGER NOT NULL,
+  updated_at        INTEGER NOT NULL,
+  version           INTEGER NOT NULL DEFAULT 1
+) STRICT;
+
+CREATE INDEX idx_artifacts_idea ON research_artifacts(idea_id, created_at DESC);
+CREATE INDEX idx_artifacts_status ON research_artifacts(status);
+
+CREATE TABLE research_session_summaries (
+  id                  TEXT PRIMARY KEY,
+  session_id          TEXT NOT NULL REFERENCES research_sessions(session_id) ON DELETE RESTRICT,
+  idea_id             TEXT REFERENCES research_ideas(id) ON DELETE RESTRICT,
+  summary             TEXT NOT NULL,
+  open_questions_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(open_questions_json)),
+  hypotheses_json     TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(hypotheses_json)),
+  artifacts_json      TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(artifacts_json)),
+  event_start_seq     INTEGER NOT NULL,
+  event_end_seq       INTEGER NOT NULL,
+  input_hash          TEXT NOT NULL,
+  version             INTEGER NOT NULL DEFAULT 1,
+  status              TEXT NOT NULL DEFAULT 'candidate'
+                      CHECK (status IN ('candidate','reviewed','superseded','rejected')),
+  supersedes_id       TEXT REFERENCES research_session_summaries(id) ON DELETE RESTRICT,
+  model_provider      TEXT,
+  model_id            TEXT,
+  prompt_version      TEXT NOT NULL,
+  created_at          INTEGER NOT NULL,
+  UNIQUE (session_id, event_start_seq, event_end_seq, version)
+) STRICT;
+
+CREATE INDEX idx_summaries_session ON research_session_summaries(session_id, created_at DESC);
+`
+
 /** One open research database. */
 export class ResearchDatabase {
   private readonly database: DatabaseSync
@@ -230,6 +601,7 @@ export class ResearchDatabase {
     for (const migration of [
       { version: 1, name: 'ideas', sql: MIGRATION_1 },
       { version: 2, name: 'sessions', sql: MIGRATION_2 },
+      { version: 3, name: 'artifacts', sql: MIGRATION_3 },
     ]) {
       const applied = this.database
         .prepare('SELECT version FROM research_schema_migrations WHERE version = ?')

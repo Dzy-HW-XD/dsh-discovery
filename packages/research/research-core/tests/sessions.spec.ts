@@ -223,7 +223,7 @@ describe('research event processing', () => {
     const upgraded = new ResearchDatabase(root)
     databases.push(upgraded)
     expect(upgraded.connection.prepare('SELECT version FROM research_schema_migrations ORDER BY version').all()
-      .map(row => row['version'])).toEqual([1, 2])
+      .map(row => row['version'])).toEqual([1, 2, 3])
     const ideaColumns = upgraded.connection.prepare('PRAGMA table_info(research_ideas)').all().map(row => row['name'])
     expect(ideaColumns).toEqual(expect.arrayContaining(['workspace_id', 'workspace_path', 'last_session_id']))
     const timelineColumns = upgraded.connection.prepare('PRAGMA table_info(research_timeline_events)').all().map(row => row['name'])
@@ -262,6 +262,43 @@ describe('research event processing', () => {
     })
     await core.events.pump()
     expect(core.sessionBindings.getCheckpoint(sessionId)?.lastSuccessfullyProcessedSeq).toBe(0)
+  })
+
+  it('upgrades a Phase 2 database through the v3 artifact migration', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dsh-research-artifact-upgrade-'))
+    roots.push(root)
+    mkdirSync(root, { recursive: true })
+    const legacy = new DatabaseSync(join(root, 'database.sqlite'))
+    legacy.exec(`
+      CREATE TABLE research_schema_migrations (
+        version INTEGER PRIMARY KEY, name TEXT NOT NULL, checksum TEXT NOT NULL, applied_at INTEGER NOT NULL
+      ) STRICT;
+      INSERT INTO research_schema_migrations VALUES (1, 'ideas', 'legacy', 1);
+      INSERT INTO research_schema_migrations VALUES (2, 'sessions', 'legacy', 2);
+      CREATE TABLE research_ideas (id TEXT PRIMARY KEY) STRICT;
+      CREATE TABLE research_sessions (session_id TEXT PRIMARY KEY) STRICT;
+      CREATE TABLE research_timeline_events (id TEXT PRIMARY KEY, idea_id TEXT NOT NULL) STRICT;
+      PRAGMA user_version = 2;
+    `)
+    legacy.close()
+    const upgraded = new ResearchDatabase(root)
+    databases.push(upgraded)
+    expect(upgraded.connection.prepare('SELECT version FROM research_schema_migrations ORDER BY version').all()
+      .map(row => row['version'])).toEqual([1, 2, 3])
+    const tables = upgraded.connection.prepare(`
+      SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'research_%' ORDER BY name
+    `).all().map(row => row['name'])
+    expect(tables).toEqual(expect.arrayContaining([
+      'research_sources', 'research_idea_sources', 'research_source_locations',
+      'research_concepts', 'research_claims', 'research_claim_versions', 'research_evidence',
+      'research_relations', 'research_questions', 'research_gaps', 'research_hypotheses',
+      'research_hypothesis_versions', 'research_hypothesis_evidence', 'research_discoveries',
+      'research_decisions', 'research_artifacts', 'research_branches', 'research_session_summaries',
+    ]))
+    const sessionColumns = upgraded.connection.prepare('PRAGMA table_info(research_sessions)').all().map(row => row['name'])
+    expect(sessionColumns).toContain('branch_id')
+    const timelineColumns = upgraded.connection.prepare('PRAGMA table_info(research_timeline_events)').all().map(row => row['name'])
+    expect(timelineColumns).toContain('branch_id')
   })
 
 })

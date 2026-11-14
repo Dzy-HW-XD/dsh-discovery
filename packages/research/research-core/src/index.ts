@@ -13,6 +13,7 @@ import { IdeaManager } from './ideas.ts'
 import { ResearchOutbox } from './outbox.ts'
 import { ResearchSessionManager } from './sessions.ts'
 import { ResearchSessionEventProcessor } from './events.ts'
+import { ResearchArtifactStore } from './artifacts.ts'
 import type {
   AddIdeaRelationInput,
   CreateIdeaInput,
@@ -32,6 +33,8 @@ export * from './ideas.ts'
 export * from './outbox.ts'
 export * from './sessions.ts'
 export * from './events.ts'
+export * from './artifact-types.ts'
+export * from './artifacts.ts'
 export * from './types.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -62,6 +65,8 @@ export default class ResearchCore extends Service {
   readonly outbox: ResearchOutbox
   /** Session event processor and recovery owner. */
   readonly events: ResearchSessionEventProcessor
+  /** Phase 3 sources, knowledge entities, and research artifacts. */
+  readonly artifacts: ResearchArtifactStore
 
   /**
    * @param ctx - Host context owning the service lifetime.
@@ -74,6 +79,7 @@ export default class ResearchCore extends Service {
     this.sessionBindings = new ResearchSessionManager(this.database)
     this.outbox = new ResearchOutbox(this.database)
     this.events = new ResearchSessionEventProcessor(ctx, this.database, this.sessionBindings, this.outbox)
+    this.artifacts = new ResearchArtifactStore(this.database)
     ctx.effect(() => () => {
       this.events.dispose()
       this.database.close()

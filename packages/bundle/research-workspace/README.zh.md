@@ -1,5 +1,5 @@
 ---
-description: "在 dsh-base 之上追加 Phase 1 Research Workspace Host 服务、Remote/工具面与 Web 面板的可选 bundle。"
+description: "在 dsh-base 之上追加 Research Workspace Host 服务、Phase 3 artifact 工具、Remote 面与 Web 面板的可选 bundle。"
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 摘要
 
-`dsh-research-workspace` 是以 Idea 为中心的研究工作区的可选 profile 层。它插入 `dsh-research-core`、`dsh-research-tools` 和 Web 面板，不替换任何 DSH 原生行。Phase 2 暴露 Idea、关系、时间线以及带事件 checkpoint 和 Inbox 的原生 DSH Session 绑定；后续研究能力尚不属于本 bundle。
+`dsh-research-workspace` 是以 Idea 为中心的研究工作区的可选 profile 层。它插入 `dsh-research-core`、`dsh-research-tools` 和 Web 面板，不替换任何 DSH 原生行。Phase 2 暴露 Idea、关系、时间线以及带事件 checkpoint 和 Inbox 的原生 DSH Session 绑定。Phase 3 增加 artifact 数据库与作用域化的 Source、Claim、Evidence、Hypothesis、Artifact、Branch 及相关研究工具；记忆、发现和编排尚不属于本 bundle。
 
 ## 目录
 

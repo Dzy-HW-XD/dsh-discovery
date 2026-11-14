@@ -3,14 +3,14 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/bundle/research-workspace/README.md
 /:
-  en: d27077dee2f9d699
-  zh: c292011f5a9200fe
+  en: c6be28505dd7d114
+  zh: e44ec6658d5e1744
 /deepseek-ai-dsh-research-workspace:
   en: 6c4e54df082045e9
   zh: 87d43a97c7650deb
 /deepseek-ai-dsh-research-workspace/summary:
-  en: 10bf7f78d999ff6d
-  zh: c8ea06555c1cf725
+  en: cad31ab1ad7c193c
+  zh: 2add63fee24c70b2
 /deepseek-ai-dsh-research-workspace/table-of-contents:
   en: 7917bead29f7b022
   zh: ed9485893732e7ea
@@ -18,10 +18,10 @@
   en: d57749db3692c2b3
   zh: feb7d3eafd1acd4d
 /deepseek-ai-dsh-research-workspace/understand-the-implementation:
-  en: 5b660cf1f1175b94
+  en: 5e8648508df2a0f1
   zh: 30de79ccd498694e
 /deepseek-ai-dsh-research-workspace/model-experience:
-  en: 9a464e6658f159b7
+  en: 8119c785042ef802
   zh: 1368dc8db4dd8e56
 /deepseek-ai-dsh-research-workspace/model-experience/kv-cache-effect:
   en: 04bb43ea3ac91176

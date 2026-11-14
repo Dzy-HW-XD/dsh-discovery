@@ -85,3 +85,32 @@ export function json(row: SqlRow, column: string): JsonValue {
     throw new ResearchError('research/database-unavailable', `research column "${column}" is not valid JSON`, { column })
   }
 }
+
+/**
+ * Read a finite numeric column.
+ * @param row - one SQLite row.
+ * @param column - column name.
+ * @returns the numeric value.
+ */
+export function real(row: SqlRow, column: string): number {
+  const value = row[column]
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new ResearchError('research/database-unavailable', `research column "${column}" is not a number`, { column })
+  }
+  return value
+}
+
+/**
+ * Read an optional finite numeric column.
+ * @param row - one SQLite row.
+ * @param column - column name.
+ * @returns the number, or undefined for SQL NULL.
+ */
+export function optionalReal(row: SqlRow, column: string): number | undefined {
+  const value = row[column]
+  if (value === null || value === undefined) return undefined
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new ResearchError('research/database-unavailable', `research column "${column}" is not a number`, { column })
+  }
+  return value
+}

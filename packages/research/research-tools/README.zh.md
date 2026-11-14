@@ -1,5 +1,5 @@
 ---
-description: "Phase 1 研究工作区的 research_idea 工具与生成式 Remote 命名空间：Idea CRUD、状态变更、归档、关系与时间线读取。"
+description: "DeepSeek Harness 研究工作区工具：全局 Idea CRUD，以及会话作用域的 Source、Concept、Claim、Evidence、图关系、Question、Gap、Hypothesis、Discovery、Artifact、Branch 与 Decision。"
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 摘要
 
-`dsh-research-tools` 把研究领域暴露给模型与浏览器。模型得到全局 `research_idea` 工具；在已绑定研究会话中还会得到作用域化的 `research_session` 工具。浏览器得到生成的 `research` Remote 命名空间，用于 Idea、Session 绑定、Inbox Session 和 finalize。两者都委托给 `ctx.researchCore`，绝不自行打开 SQLite。
+`dsh-research-tools` 把研究领域暴露给模型与浏览器。模型得到全局 `research_idea` 工具；在已绑定研究会话中还会得到作用域化的 `research_session` 与 Phase 3 artifact 工具。浏览器得到生成的 `research` Remote 命名空间，用于 Idea、Session 绑定、Inbox Session 和 finalize。两者都委托给 `ctx.researchCore`，绝不自行打开 SQLite。
 
 ## 目录
 
@@ -36,7 +36,9 @@ kind: "package-reference"
 
 ### 模型工具
 
-`research_idea` 接受一个 `action`：`create`、`list`、`get`、`update`、`archive`、`add_relation`、`remove_relation`、`list_relations` 或 `timeline`。更新和归档需要 `expectedVersion`；过期值会被拒绝，而不是覆盖并发工作。已绑定会话还会收到 `research_session`，支持 `list`、`get` 和 `finalize`；`finalize` 只能作用于当前会话。
+`research_idea` 接受一个 `action`：`create`、`list`、`get`、`update`、`archive`、`add_relation`、`remove_relation`、`list_relations` 或 `timeline`。更新和归档需要 `expectedVersion`；过期值会被拒绝，而不是覆盖并发工作。
+
+已绑定会话还会收到 `research_session`（`list`、`get`、`finalize`）以及 Phase 3 工具：`research_source`（import/list/locate/locations）、`research_concept`（create/list）、`research_claim`（create/update/get/list/versions）、`research_evidence`（create/list）、`research_graph`（entities/relations/relate）、`research_question`、`research_gap`、`research_hypothesis`（版本与 Evidence 链接）、`research_discovery`、`research_artifact`（create/get/verify/list）、`research_branch` 和 `research_decision`。每个 artifact 工具都把调用 Session 与 tool-call id 记录为 provenance。
 
 -----
 
@@ -44,7 +46,7 @@ kind: "package-reference"
 
 ## 理解实现
 
-Host controller 把领域值映射为 wire-safe 视图，并把 `ResearchError` 映射为同 code、同 details 的 `RemoteError`。Research 创建的会话使用 `ctx.agents.create({ setup })`，因此 Idea brief 与作用域化工具在首次请求前就存在。标准 UI 会话与恢复路径使用串行 `agent/created` fallback；安装对每个 Agent 幂等，解绑时会移除。本包通过 `@deepseek-ai/dsh-api-remotes` 贡献 Remote 类型，因此浏览器得到生成的签名，而不是手写传输代码。
+Host controller 把领域值映射为 wire-safe 视图，并把 `ResearchError` 映射为同 code、同 details 的 `RemoteError`。Research 创建的会话使用 `ctx.agents.create({ setup })`，因此 Idea brief 与作用域化工具在首次请求前就存在。标准 UI 会话与恢复路径使用串行 `agent/created` fallback；安装对每个 Agent 幂等，解绑时会移除。Phase 3 工具调用 `ctx.researchCore.artifacts`；artifact 内容在数据库行提交前原子写入。本包通过 `@deepseek-ai/dsh-api-remotes` 贡献 Remote 类型，因此浏览器得到生成的签名，而不是手写传输代码。
 
 -----
 
@@ -56,7 +58,7 @@ Host controller 把领域值映射为 wire-safe 视图，并把 `ResearchError` 
 
 #### 模型看到什么
 
-模型看到一个合并的 `research_idea` 工具，其 `action` 枚举为 `create`、`list`、`get`、`update`、`archive`、`add_relation`、`remove_relation`、`list_relations` 或 `timeline`。描述说明父子关系通过 `parentIdeaId` 设置、关系有方向、归档不是删除。schema 在该部署中固定。
+模型在所有会话中看到全局 `research_idea`，仅在已绑定会话中看到作用域化 Research 工具。`research_idea` 的 `action` 枚举为 `create`、`list`、`get`、`update`、`archive`、`add_relation`、`remove_relation`、`list_relations` 或 `timeline`。作用域化工具各自暴露面向 action 的 schema；每次 create/update 都携带 Idea id，provenance 取自运行中的 Agent 与 tool call，而不是模型字段。
 
 #### Token 影响
 
@@ -70,7 +72,7 @@ Host controller 把领域值映射为 wire-safe 视图，并把 `ResearchError` 
 
 #### 模型看到什么
 
-每次调用返回所选 action 的紧凑 JSON：Idea 视图、Idea 列表、关系视图、关系列表或时间线事件。失败使用稳定的 `research/*` 代码；过期的 `expectedVersion` 返回 `research/version-conflict`，并携带调用方版本与当前版本。
+每次调用返回所选 action 的紧凑 JSON。Artifact 工具返回新建实体、列表、计数与实体摘要，或 artifact 校验结果。失败使用稳定的 `research/*` 代码；缺失实体返回 `research/*-not-found`，非法 epistemic 输入返回 `research/invalid-input`，过期 `expectedVersion` 返回 `research/version-conflict`。
 
 #### Token 影响
 
@@ -84,6 +86,7 @@ Token 增长随请求的 `limit` 以及所选 Idea 或时间线的大小变化�
 
 ## 已知限制与延后工作
 
-- `research_idea` 仍全局注册；`research_session` 与研究 prompt 仅作用于已绑定 Agent。
-- 记忆提取、Claim/Evidence API、知识遍历和发现属于后续阶段。
+- `research_idea` 仍全局注册；`research_session` 与 Phase 3 artifact 工具仅作用于已绑定 Agent。
+- 记忆提取、Context 组装、发现引擎、Hypothesis review 与自主编排属于后续阶段。
+- 浏览器尚无 artifact 读取或编辑 Remote 面；Phase 4 增加 Idea Workspace 标签页。
 - Session 事件通过 Research Outbox 持久处理；仪表盘仍在每次操作后刷新，尚未订阅 `research/changed`。

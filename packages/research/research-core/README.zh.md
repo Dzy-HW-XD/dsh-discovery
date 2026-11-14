@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 摘要
 
-`dsh-research-core` 拥有持久研究领域。它把长期 Idea、父子层级、有向关系、只追加时间线、Session 与 Idea 绑定、事件 checkpoint 和持久 Outbox 存入独立 SQLite 数据库。该数据库与 DSH Session 日志分离：对话事实保留在 Session 事件中，研究记录独立存活。
+`dsh-research-core` 拥有持久研究领域。它把长期 Idea、父子层级、有向关系、只追加时间线、Session 与 Idea 绑定、事件 checkpoint、持久 Outbox、共享 Source、Claim、Evidence、Concept、Question、Gap、Hypothesis、Discovery、Decision、Artifact、Branch 和 Session Summary 快照存入独立 SQLite 数据库。该数据库与 DSH Session 日志分离：对话事实保留在 Session 事件中，研究记录独立存活。
 
 ## 目录
 
@@ -51,6 +51,13 @@ kind: "package-reference"
 | `listSessions` / `listInboxSessions` | 查询 Idea 会话或未绑定会话 |
 | `finalizeSession` | 标记研究会话完成，不删除 DSH 历史 |
 | `recordEventsSeen` / `commitProcessedEvent` | 维护两个处理水位 |
+| `artifacts.createSource` / `linkSource` | 导入共享 Source 并关联到 Idea |
+| `artifacts.createClaim` / `updateClaim` | 写入 Claim 并保留不可变版本快照 |
+| `artifacts.createEvidence` | 把带 Source 的 Evidence 关联到可选 Claim |
+| `artifacts.createKnowledgeRelation` | 在同一 Idea 内关联两个已存在实体 |
+| `artifacts.createQuestion` / `createGap` / `createHypothesis` | 记录结构化研究产出 |
+| `artifacts.createArtifact` / `verifyArtifact` | 原子写入文件并校验 hash |
+| `artifacts.recordSessionSummary` | 追加不可变 Session Summary 快照 |
 
 ### 生命周期
 
@@ -68,6 +75,10 @@ kind: "package-reference"
 
 数据库使用 WAL、外键、五秒 busy timeout，并且每次变更使用一个同步 `BEGIN IMMEDIATE` 事务。`research_schema_migrations` 记录每个已应用的 schema 版本和校验和。每次 Idea 变更都在同一事务写入时间线行，因此已提交的 Idea 变更与其历史不会不一致。Session 事件副作用通过 `research_outbox` 传递；只有标记 outbox 行完成的事务才能推进事件的 `last_successfully_processed_seq`。
 
+Migration v3 增加 artifact 表。Claim 与 Hypothesis 更新追加版本快照，而不是覆盖历史。Artifact 内容先写入临时文件、再 rename、计算 hash，最后才提交数据库；文件缺失或被篡改时，数据库行仍是权威。
+
+`ResearchIdea.workspacePath` 与 `ResearchIdea.lastSessionId` 由 Phase 2 迁移持久化，存在时返回。
+
 `ResearchIdea.workspacePath` 和 `ResearchIdea.lastSessionId` 仅为预留类型字段；Phase 1 从不持久化或返回它们。
 
 -----
@@ -76,7 +87,8 @@ kind: "package-reference"
 
 ## 已知限制与延后工作
 
-- Phase 2 没有记忆、Claim、Evidence 或知识表；这些在后续阶段随各自迁移到来。
+- Phase 3 没有记忆记录、Context 快照、Job 或 Hypothesis review；这些随后续阶段到来。
+- Artifact 文件位于 `<root>/artifacts`；移动或截断文件会把行标记为 `missing` 或 `failed`，而不会删除记录。
 - 搜索使用 SQL `LIKE`，不是 FTS5；在记忆检索存在前，Idea 搜索面刻意保持很小。
 - SQLite 调用在 Host 线程同步执行；这对小型 Idea 与 Session 元数据写入可接受，不适合批量导入。
 - 没有删除操作。归档 Idea 保持可读，关系被取代而非移除。

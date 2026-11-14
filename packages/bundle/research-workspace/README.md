@@ -1,5 +1,5 @@
 ---
-description: "Opt-in bundle that adds the Phase 1 Research Workspace Host service, Remote/tool surface, and Web panel on top of dsh-base."
+description: "Opt-in bundle that adds the Research Workspace Host service, Phase 3 artifact tools, Remote surface, and Web panel on top of dsh-base."
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-`dsh-research-workspace` is the opt-in profile layer for the Idea-centric research workspace. It inserts `dsh-research-core`, `dsh-research-tools`, and the Web panel without replacing any native DSH row. Phase 2 exposes Ideas, relations, their timeline, and native DSH Session bindings with event checkpoints and Inbox support; later research capabilities are not part of this bundle yet.
+`dsh-research-workspace` is the opt-in profile layer for the Idea-centric research workspace. It inserts `dsh-research-core`, `dsh-research-tools`, and the Web panel without replacing any native DSH row. Phase 2 exposes Ideas, relations, their timeline, and native DSH Session bindings with event checkpoints and Inbox support. Phase 3 adds the artifact database and scoped Sources, Claims, Evidence, Hypotheses, Artifacts, Branches, and related research tools; memory, discovery, and orchestration are not part of this bundle yet.
 
 ## Table of Contents
 
@@ -34,13 +34,13 @@ The patch inserts the Host core, the Remote/tool controller, and the browser pan
 
 ## Understand the implementation
 
-The package carries a `cordis.patch.yml` declared through `dsh.bundle.patch`. The Host service owns SQLite; the tools package contributes the `research` Remote namespace and `research_idea`; the client package registers the `research` main panel and sidebar entry. The bundle itself has no runtime API beyond the marker module.
+The package carries a `cordis.patch.yml` declared through `dsh.bundle.patch`. The Host service owns SQLite; the tools package contributes the `research` Remote namespace, `research_idea`, and Session-scoped artifact tools; the client package registers the `research` main panel and sidebar entry. The bundle itself has no runtime API beyond the marker module.
 
 -----
 
 ## Model Experience
 
-Indirectly, through the `research_idea` tool that `dsh-research-tools` registers when this bundle mounts it.
+Indirectly, through `research_idea` and the Session-scoped artifact tools that `dsh-research-tools` registers when this bundle mounts it.
 
 #### KV Cache effect
 

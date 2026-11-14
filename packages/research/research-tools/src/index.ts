@@ -67,6 +67,14 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'research/workspace-not-found': Record<string, string | number | boolean | null>
     'research/model-unavailable': Record<string, string | number | boolean | null>
     'research/agent-unavailable': Record<string, string | number | boolean | null>
+    'research/source-not-found': Record<string, string | number | boolean | null>
+    'research/claim-not-found': Record<string, string | number | boolean | null>
+    'research/evidence-not-found': Record<string, string | number | boolean | null>
+    'research/hypothesis-not-found': Record<string, string | number | boolean | null>
+    'research/artifact-not-found': Record<string, string | number | boolean | null>
+    'research/entity-not-found': Record<string, string | number | boolean | null>
+    'research/artifact-hash-mismatch': Record<string, string | number | boolean | null>
+    'research/duplicate': Record<string, string | number | boolean | null>
     'research/version-conflict': Record<string, string | number | boolean | null>
     'research/invalid-transition': Record<string, string | number | boolean | null>
     'research/invalid-input': Record<string, string | number | boolean | null>

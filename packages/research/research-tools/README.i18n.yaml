@@ -3,14 +3,14 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/research/research-tools/README.md
 /:
-  en: ceaa0568d12e6aa8
-  zh: 45120e231dd227a9
+  en: cb618419bf00254d
+  zh: a60c666f18f891fc
 /deepseek-ai-dsh-research-tools:
   en: f569eb899ed6389d
   zh: fe12bccb3311e5f3
 /deepseek-ai-dsh-research-tools/summary:
-  en: 6a3557831deb1225
-  zh: 98c30cd5d910525d
+  en: 8d89e5946b73f1b2
+  zh: da265738b248c7a5
 /deepseek-ai-dsh-research-tools/table-of-contents:
   en: 7917bead29f7b022
   zh: ed9485893732e7ea
@@ -21,11 +21,11 @@
   en: 0e6968b5cbe8286f
   zh: 5c8abd609001c2dc
 /deepseek-ai-dsh-research-tools/use-this-package/model-tool:
-  en: a71a36e361021d4a
-  zh: b174b208883f2333
+  en: 136857f01ee8b41d
+  zh: 069aeb71b2381795
 /deepseek-ai-dsh-research-tools/understand-the-implementation:
-  en: cf425e80dba8065a
-  zh: 4d3238331b9a646d
+  en: da6e32e7a9832df2
+  zh: 79272a3200a6f500
 /deepseek-ai-dsh-research-tools/model-experience:
   en: 215e7ba838619b7b
   zh: a311da3843709f90
@@ -33,8 +33,8 @@
   en: 203711bd57da0e94
   zh: d18677364e8fe82c
 /deepseek-ai-dsh-research-tools/model-experience/tool-definition/what-the-model-sees:
-  en: 350073f0ebb4c70f
-  zh: 040c79b17c6d7357
+  en: 53c561c18dafc7c5
+  zh: 65f75d322070dd32
 /deepseek-ai-dsh-research-tools/model-experience/tool-definition/token-effect:
   en: 3409766c70b1c0ad
   zh: 297785290b1027c0
@@ -45,8 +45,8 @@
   en: 9717b983b6a857e3
   zh: 611a2dadf7c0c706
 /deepseek-ai-dsh-research-tools/model-experience/tool-call-history-and-result/what-the-model-sees:
-  en: 27dcc98563c70e44
-  zh: d2248764be4f87ee
+  en: 8059be7dd9ae474b
+  zh: 5cc10a64613bb5ae
 /deepseek-ai-dsh-research-tools/model-experience/tool-call-history-and-result/token-effect:
   en: b07bcdc78d222dde
   zh: f11d20d02680472a
@@ -54,5 +54,5 @@
   en: e5e225637c1cf062
   zh: 5c8e33b24d9fe7a5
 /deepseek-ai-dsh-research-tools/known-limitations-and-deferred-work:
-  en: 797ca49f691002a1
-  zh: 91737f483458e36e
+  en: 7aa46b8c1c101936
+  zh: 8316428cac9fd486

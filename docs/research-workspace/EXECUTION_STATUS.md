@@ -1,7 +1,7 @@
 # DSH Research Workspace — Execution Status
 
 - 最后更新：2026-11-14
-- 当前 Batch：Batch B / Phase 3（Ready to Start）
+- 当前 Batch：Batch B / Phase 4（Ready to Start）
 - 已完成 Batch：Batch A（Phase 1–2）
 - 开发授权：Phase 1–9 整体授权
 - 执行模式：Batch 验收门禁 + 自动推进
@@ -27,9 +27,9 @@
 | Batch A | Completed | Passed（见 `reports/BATCH_A_COMPLETION.md`） |
 | Phase 1 | Completed | Passed |
 | Phase 2 | Completed | Passed |
-| Batch B | Ready to Start | Pending |
-| Phase 3 | Ready to Start | Pending |
-| Phase 4 | Pending | Pending |
+| Batch B | In Progress | Phase 3 passed; Phase 4 pending |
+| Phase 3 | Completed | Passed |
+| Phase 4 | Ready to Start | Pending |
 | Batch C | Pending | Pending |
 | Phase 5–6 | Pending | Pending |
 | Batch D | Pending | Pending |
@@ -43,6 +43,7 @@
 |---|---|---|
 | v1 | `research_schema_migrations`、`research_ideas`、`research_idea_relations`、`research_timeline_events` | Applied（Phase 1） |
 | v2 | `research_sessions`、`research_session_idea_links`、`research_session_checkpoints`、`research_outbox`；Idea/Relation/Timeline 扩展列 | Applied（Phase 2） |
+| v3 | Sources、Concepts、Claims、Evidence、Relations、Questions、Gaps、Hypotheses、Discoveries、Decisions、Artifacts、Branches、Session Summaries；Session/Timeline `branch_id` | Applied（Phase 3） |
 
 Migration v1→v2 升级测试通过；重复打开幂等。
 
@@ -59,13 +60,15 @@ Migration v1→v2 升级测试通过；重复打开幂等。
 - Inbox Session 不注入 Research prompt/tools；绑定 Idea 后才安装；解绑时移除。
 - `research-tools` 使用 host/client 双编译面：Client 只包含 wire types；Host 服务与 Session Query Reader 不进入 Client 程序。
 - `research-core` 不依赖 Session Query；Host 的 `ResearchSessionLogReader` 由 `research-tools` 注入，避免 Client 程序加载 Host 包。
-- Phase 2 不创建 `research_branches`，不实现 Memory、Claim、Evidence、Knowledge Graph、Discovery、Orchestrator。
+- Phase 3 的 Claim/Evidence/Hypothesis/Artifact 均记录 `originSessionId` 与 tool-call provenance；Hypothesis 与 Claim 更新写不可变版本。
+- Source 跨 Idea 共享；Artifact 文件是派生介质，数据库行权威。
+- Phase 3 不实现 Memory、Context Assembly、Discovery Engine、Hypothesis Review、Orchestrator。
 
 ## 5. 当前工作
 
 - Batch A 已完成并生成完成报告。
-- Batch B / Phase 3 尚未开始。
-- 下一阶段将实现 Research Artifact Database（ResearchQuestion、Hypothesis、Claim、Evidence、ResearchGap、Discovery、Artifact、Versioning、Provenance、Timeline）。
+- Phase 3 已完成并生成 `reports/PHASE_3_COMPLETION.md`。
+- Batch B / Phase 4 尚未开始；下一步实现 Idea Workspace UI 与 artifact Remote 面。
 
 ## 6. 验收证据
 
@@ -74,7 +77,7 @@ corepack pnpm exec vitest run \
   packages/research/research-core/tests \
   packages/research/research-tools/tests \
   packages/client/ui-research-workspace/tests
-# 9 files, 44 tests passed
+# 10 files, 53 tests passed
 ```
 
 ```sh
