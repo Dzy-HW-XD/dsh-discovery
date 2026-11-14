@@ -1,7 +1,7 @@
 # DSH Research Workspace — Execution Status
 
 - 最后更新：2026-11-14
-- 当前 Batch：Batch C / Phase 5（Ready to Start）
+- 当前 Batch：Batch C / Phase 5.0（Architecture Review Complete, Awaiting Approval）
 - 已完成 Batch：Batch A（Phase 1–2）、Batch B（Phase 3–4）
 - 开发授权：Phase 1–9 整体授权
 - 执行模式：Batch 验收门禁 + 自动推进
@@ -30,8 +30,9 @@
 | Batch B | Completed | Passed（见 `reports/BATCH_B_COMPLETION.md`） |
 | Phase 3 | Completed | Passed |
 | Phase 4 | Completed | Passed |
-| Batch C | Ready to Start | Pending |
-| Phase 5–6 | Pending | Pending |
+| Batch C | In Progress | Phase 5.0 review complete; implementation awaiting approval |
+| Phase 5 | Architecture Review Complete | Awaiting approval |
+| Phase 6 | Pending | Pending |
 | Batch D | Pending | Pending |
 | Phase 7–8 | Pending | Pending |
 | Batch E | Pending | Pending |
@@ -70,7 +71,8 @@ Migration v1→v2 升级测试通过；重复打开幂等。
 - Phase 3 已完成并生成 `reports/PHASE_3_COMPLETION.md`。
 - Phase 4 已完成：`research.getWorkspace` Remote 与 Idea Workspace 7 个标签页。
 - Batch B 已完成并生成 `reports/BATCH_B_COMPLETION.md`。
-- 下一步进入 Batch C / Phase 5：Memory Manager。
+- Phase 5.0 架构审查完成，报告为 `reports/PHASE_5_ARCHITECTURE_REVIEW.md`；尚未修改 Phase 5 业务代码。
+- 等待架构审查确认后进入 Phase 5.1 Memory Store。
 
 ## 6. 验收证据
 
@@ -113,6 +115,6 @@ corepack pnpm run verify-tool-catalog
 
 ## 8. 下一步
 
-1. 提交并推送 Batch B（Phase 3–4）实现与报告。
-2. 开始 Batch C / Phase 5：Memory Manager。
-3. Phase 5 通过验收后进入 Phase 6，再进入 Batch D。
+1. 提交并推送 Phase 5.0 架构审查报告。
+2. 等待审查确认。
+3. 确认后按 5.1 → 5.8 实施；Phase 5 通过验收后进入 Phase 6 / Batch D。
