@@ -128,6 +128,6 @@ corepack pnpm run verify-tool-catalog
 
 ## 8. 下一步
 
-1. Phase 5.4 提交后将 Phase 5.3/5.4 一并推送；GitHub TLS 失败时保留本地提交。
+1. Phase 5.3/5.4 已推送至 `origin/main`。
 2. 等待 Phase 5.5 授权。
 3. 确认后按 5.5 → 5.8 实施；Phase 5 通过验收后进入 Phase 6 / Batch D。

@@ -219,9 +219,9 @@ corepack pnpm run verify-translation-pairing
 
 ## 16. Git
 
-- 待提交 Phase 5.4 独立 commit。
-- Phase 5.3 本地提交 `65b00ddb` 尚未推送；GitHub TLS 网络问题待重试。
-- 不得 reset/rebase/覆盖该提交。
+- Phase 5.4 独立提交：`e65cd4a5`。
+- Phase 5.3 `65b00ddb` 与 Phase 5.4 `e65cd4a5` 已推送至 `origin/main`（`556d7756..e65cd4a5`）。
+- 工作区干净。
 
 ## 17. 下一阶段
 
