@@ -72,6 +72,10 @@ function mapSource(row: SqlRow): MemorySource {
   const entityId = optionalText(row, 'entity_id')
   const sourceId = optionalText(row, 'source_id')
   const locationId = optionalText(row, 'location_id')
+  const summaryId = optionalText(row, 'summary_id')
+  const summaryVersion = optionalInteger(row, 'summary_version')
+  const extractionJobId = optionalText(row, 'extraction_job_id')
+  const entityVersion = optionalInteger(row, 'entity_version')
   return {
     id: MemorySourceId(text(row, 'id')),
     memoryId: MemoryId(text(row, 'memory_id')),
@@ -82,6 +86,11 @@ function mapSource(row: SqlRow): MemorySource {
     ...sourceId === undefined ? {} : { sourceId },
     ...locationId === undefined ? {} : { locationId },
     quote: text(row, 'quote'),
+    ...summaryId === undefined ? {} : { summaryId },
+    ...summaryVersion === undefined ? {} : { summaryVersion },
+    ...extractionJobId === undefined ? {} : { extractionJobId },
+    ...entityVersion === undefined ? {} : { entityVersion },
+    sourceRole: text(row, 'source_role') as MemorySource['sourceRole'],
     createdAt: integer(row, 'created_at'),
   }
 }
@@ -333,17 +342,25 @@ export class ResearchMemoryRepository {
       sourceId?: string
       locationId?: string
       quote?: string
+      summaryId?: string
+      summaryVersion?: number
+      extractionJobId?: string
+      entityVersion?: number
+      sourceRole?: 'direct' | 'supporting' | 'contradicting' | 'inferred'
     },
     now: number,
   ): MemorySource {
     this.database.connection.prepare(`
       INSERT OR IGNORE INTO research_memory_sources (
         id, memory_id, source_key, session_id, event_seq, entity_type, entity_id,
-        source_id, location_id, quote, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        source_id, location_id, quote, summary_id, summary_version, extraction_job_id,
+        entity_version, source_role, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(id, memoryId, sourceKey, input.sessionId ?? null, input.eventSeq ?? null,
       input.entityType ?? null, input.entityId ?? null, input.sourceId ?? null,
-      input.locationId ?? null, input.quote ?? '', now)
+      input.locationId ?? null, input.quote ?? '', input.summaryId ?? null,
+      input.summaryVersion ?? null, input.extractionJobId ?? null,
+      input.entityVersion ?? null, input.sourceRole ?? 'direct', now)
     const row = this.database.connection.prepare(`
       SELECT * FROM research_memory_sources WHERE memory_id = ? AND source_key = ?
     `).get(memoryId, sourceKey)

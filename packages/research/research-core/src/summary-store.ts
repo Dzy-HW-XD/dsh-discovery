@@ -8,8 +8,11 @@
 import { randomUUID } from 'node:crypto'
 import type { ResearchDatabase } from './database.ts'
 import { ResearchError } from './errors.ts'
+import { ResearchOutbox } from './outbox.ts'
 import { integer, json, optionalInteger, optionalText, text, type SqlRow } from './rows.ts'
 import {
+  SESSION_MEMORY_EXTRACTION_TOPIC,
+  extractionIdempotencyKey,
   type InsertSummaryInput,
   type ResearchSessionSummary,
   type SummaryGenerationStatus,
@@ -83,10 +86,14 @@ function mapSummary(row: SqlRow): ResearchSessionSummary {
 
 /** Durable Session Summary repository. */
 export class ResearchSummaryStore {
+  private readonly outbox: ResearchOutbox
+
   /**
    * @param database - open research database.
    */
-  constructor(private readonly database: ResearchDatabase) {}
+  constructor(private readonly database: ResearchDatabase) {
+    this.outbox = new ResearchOutbox(database)
+  }
 
   /**
    * Find a summary by its idempotency key.
@@ -190,6 +197,18 @@ export class ResearchSummaryStore {
         JSON.stringify(input.nextSteps), JSON.stringify(input.generatedArtifacts),
         JSON.stringify(input.sourceReferences), input.generationStatus ?? 'completed',
         input.generationError ?? null, input.idempotencyKey)
+      this.outbox.enqueue({
+        topic: SESSION_MEMORY_EXTRACTION_TOPIC,
+        aggregateType: 'research_summary',
+        aggregateId: id,
+        idempotencyKey: extractionIdempotencyKey(id, version),
+        payload: {
+          summaryId: id,
+          sessionId: input.sessionId,
+          ideaId: input.ideaId ?? null,
+          summaryVersion: version,
+        },
+      }, now)
     })
     return this.get(id) as ResearchSessionSummary
   }

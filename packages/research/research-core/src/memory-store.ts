@@ -90,6 +90,11 @@ function sourceKey(input: MemorySourceInput): string {
     sourceId: input.sourceId ?? null,
     locationId: input.locationId ?? null,
     quote: input.quote ?? '',
+    summaryId: input.summaryId ?? null,
+    summaryVersion: input.summaryVersion ?? null,
+    extractionJobId: input.extractionJobId ?? null,
+    entityVersion: input.entityVersion ?? null,
+    sourceRole: input.sourceRole ?? 'direct',
   })
 }
 
@@ -518,6 +523,7 @@ export class ResearchMemoryStore {
       }
       if (source.sourceId !== undefined) this.assertSource(source.sourceId)
       if (source.locationId !== undefined) this.assertLocation(source.locationId, source.sourceId)
+      if (source.summaryId !== undefined) this.assertSummary(ideaId, source.summaryId)
     }
   }
 
@@ -552,6 +558,18 @@ export class ResearchMemoryStore {
     const row = this.database.connection.prepare('SELECT id FROM research_sources WHERE id = ?').get(sourceId)
     if (row === undefined) {
       throw new ResearchError('research/source-not-found', `Source "${sourceId}" not found`, { sourceId })
+    }
+  }
+
+  private assertSummary(ideaId: IdeaIdType, summaryId: string): void {
+    const row = this.database.connection.prepare(
+      'SELECT idea_id FROM research_session_summaries WHERE id = ?',
+    ).get(summaryId)
+    if (row === undefined) {
+      throw new ResearchError('research/entity-not-found', `Session summary "${summaryId}" not found`, { summaryId })
+    }
+    if (optionalText(row, 'idea_id') !== ideaId) {
+      throw new ResearchError('research/invalid-input', 'summary belongs to another Idea', { summaryId })
     }
   }
 

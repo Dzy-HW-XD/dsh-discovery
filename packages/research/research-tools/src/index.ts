@@ -6,7 +6,7 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import { SummaryCoordinator } from '@deepseek-ai/dsh-research-memory'
+import { ExtractorCoordinator, SummaryCoordinator } from '@deepseek-ai/dsh-research-memory'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-query'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
@@ -246,6 +246,7 @@ export default class ResearchController extends TypertRemoteService {
   private readonly composition: ResearchComposition
   private readonly creator: ResearchSessionCreator
   private readonly summaryCoordinator: SummaryCoordinator | undefined
+  private readonly extractionCoordinator: ExtractorCoordinator
   /** Startup reconciliation; tests may await this before asserting Inbox rows. */
   readonly ready: Promise<void>
 
@@ -263,7 +264,12 @@ export default class ResearchController extends TypertRemoteService {
       ? undefined
       : new SummaryCoordinator({ core, reader: query, logger: ctx.logger })
     this.summaryCoordinator?.start()
-    ctx.effect(() => () => { this.summaryCoordinator?.dispose() }, 'research-tools: summary coordinator')
+    this.extractionCoordinator = new ExtractorCoordinator({ core, logger: ctx.logger })
+    this.extractionCoordinator.start()
+    ctx.effect(() => () => {
+      this.summaryCoordinator?.dispose()
+      this.extractionCoordinator.dispose()
+    }, 'research-tools: summary and extraction coordinators')
     ctx.effect(() => ctx.tools.register(researchIdeaTool(core)), 'research-tools: research_idea')
 
     ctx.on('session/created', (session) => {
@@ -347,6 +353,7 @@ export default class ResearchController extends TypertRemoteService {
       }
       await this.ctx.researchCore.events.reconcile()
       await this.summaryCoordinator?.flush()
+      await this.extractionCoordinator.flush()
     } catch (error: unknown) {
       ctx.logger.warn(`research: startup reconciliation failed: ${String(error)}`)
     }
@@ -581,6 +588,7 @@ export default class ResearchController extends TypertRemoteService {
         throw new ResearchError('research/database-unavailable', 'Session query is not mounted', {})
       }
       const summary = await this.summaryCoordinator.summarizeNow(SessionId(request.sessionId))
+      await this.extractionCoordinator.flush()
       return summary === undefined ? null : toSummaryView(summary)
     } catch (error) {
       throwRemote(error)

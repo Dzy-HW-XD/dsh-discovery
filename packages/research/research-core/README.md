@@ -81,7 +81,7 @@ Migration v3 adds the artifact tables. Claim and Hypothesis updates append versi
 
 Migration v4 adds the Phase 5 memory tables. Epistemic status and lifecycle status are separate columns; every update appends a memory version and preserves sources, relations, and change metadata. Memory rows are scoped by Idea and carry Session/entity provenance. Selection rows record which memories were injected with their layer, rank, and token estimate.
 
-Migration v5 extends `research_session_summaries` with objective, key findings, hypotheses, decisions, failed attempts, next steps, source references, generation state, and an idempotency key. Summary rows are immutable history: a newer range supersedes the previous row instead of overwriting it.
+Migration v5 extends `research_session_summaries` with objective, key findings, hypotheses, decisions, failed attempts, next steps, source references, generation state, and an idempotency key. Migration v6 adds extraction provenance columns to memory sources: Summary id/version, extraction job id, source entity version, and direct/supporting/contradicting/inferred role. Summary rows are immutable history: a newer range supersedes the previous row instead of overwriting it.
 
 `ResearchIdea.workspacePath` and `ResearchIdea.lastSessionId` are persisted by the Phase 2 migration and returned when present.
 

@@ -288,7 +288,7 @@ describe('research memory migration v4', () => {
       'research_memory_selections', 'research_memory_sources', 'research_memory_versions',
     ])
     expect(core.database.connection.prepare('SELECT version FROM research_schema_migrations ORDER BY version').all()
-      .map(row => row['version'])).toEqual([1, 2, 3, 4, 5])
+      .map(row => row['version'])).toEqual([1, 2, 3, 4, 5, 6])
     core.memory.createMemory({
       ideaId, memoryType: 'goal', title: 'Persisted', content: 'Survives reopen.',
       epistemicStatus: 'verified', sourceSessionId: sessionId,
@@ -297,7 +297,7 @@ describe('research memory migration v4', () => {
     expect(reopened.connection.prepare('SELECT COUNT(*) AS count FROM research_memory_records').get())
       .toMatchObject({ count: 1 })
     expect(reopened.connection.prepare('SELECT version FROM research_schema_migrations ORDER BY version').all()
-      .map(row => row['version'])).toEqual([1, 2, 3, 4, 5])
+      .map(row => row['version'])).toEqual([1, 2, 3, 4, 5, 6])
     reopened.close()
   })
 
@@ -322,7 +322,7 @@ describe('research memory migration v4', () => {
     legacy.close()
     const upgraded = new ResearchDatabase(root)
     expect(upgraded.connection.prepare('SELECT version FROM research_schema_migrations ORDER BY version').all()
-      .map(row => row['version'])).toEqual([1, 2, 3, 4, 5])
+      .map(row => row['version'])).toEqual([1, 2, 3, 4, 5, 6])
     expect(upgraded.connection.prepare('SELECT id FROM research_ideas').all().map(row => row['id'])).toEqual(['idea_legacy'])
     expect(upgraded.connection.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'research_memory_selections'",

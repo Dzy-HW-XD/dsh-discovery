@@ -5,7 +5,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { createUserMessage, LlmAdapter, type GenerateOptions, type LlmResolvedModelInfo, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import ResearchCore from '@deepseek-ai/dsh-research-core'
+import ResearchCore, { IdeaId } from '@deepseek-ai/dsh-research-core'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
 import * as JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
 import SqliteSessionQueryEngine from '@deepseek-ai/dsh-session-query-sqlite'
@@ -77,6 +77,14 @@ describe('Summary lifecycle with a real Agent Session', () => {
     await agent!.whenIdle()
     await ctx.sessions.flush(agent!.session)
     await ctx.researchCore.events.flush()
+    const source = ctx.researchCore.artifacts.createSource(IdeaId(idea.id), {
+      sourceType: 'paper', title: 'Summary lifecycle source',
+    })
+    ctx.researchCore.artifacts.createClaim(IdeaId(idea.id), {
+      statement: 'Mock finding from the lifecycle test.',
+      epistemicStatus: 'reported',
+      sourceIds: [source.id],
+    }, { originSessionId: binding.sessionId })
     const summary = await controller.summarizeSession({ sessionId: binding.sessionId })
     expect(summary).not.toBeNull()
     expect(summary).toMatchObject({
@@ -84,7 +92,11 @@ describe('Summary lifecycle with a real Agent Session', () => {
       generationStatus: 'completed',
       objective: 'Study GPU Tensor Core bit flips in this Session.',
     })
-    expect(summary!.sourceReferences).toEqual([])
+    expect(summary!.sourceReferences.some(item => item.entityType === 'claim')).toBe(true)
     expect(summary!.summary).toContain('Objective:')
+    expect(ctx.researchCore.memory.listMemories(IdeaId(idea.id))).toHaveLength(1)
+    expect(ctx.researchCore.memory.listMemories(IdeaId(idea.id))[0]).toMatchObject({
+      memoryType: 'fact', lifecycleStatus: 'candidate', epistemicStatus: 'unverified',
+    })
   })
 })

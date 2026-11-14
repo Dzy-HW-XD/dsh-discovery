@@ -85,7 +85,7 @@ Migration v3 增加 artifact 表。Claim 与 Hypothesis 更新追加版本快照
 
 Migration v4 增加 Phase 5 Memory 表。Epistemic status 与 lifecycle status 分列；每次更新追加 Memory 版本，并保留来源、关系与变更元数据。Memory 按 Idea 隔离，并记录 Session/实体 provenance。Selection 行记录被注入的 Memory、层级、排序与 token 估算。
 
-Migration v5 为 `research_session_summaries` 增加 objective、key findings、hypotheses、decisions、failed attempts、next steps、source references、generation 状态与幂等键。Summary 行保留历史：新范围 supersede 上一条，而不是覆盖。
+Migration v5 为 `research_session_summaries` 增加 objective、key findings、hypotheses、decisions、failed attempts、next steps、source references、generation 状态与幂等键。Migration v6 为 memory sources 增加提取 provenance：Summary id/version、extraction job id、实体版本与 direct/supporting/contradicting/inferred 角色。Summary 行保留历史：新范围 supersede 上一条，而不是覆盖。
 
 `ResearchIdea.workspacePath` 与 `ResearchIdea.lastSessionId` 由 Phase 2 迁移持久化，存在时返回。
 

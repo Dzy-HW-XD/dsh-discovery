@@ -134,6 +134,11 @@ export interface MemorySource {
   readonly sourceId?: string
   readonly locationId?: string
   readonly quote: string
+  readonly summaryId?: string
+  readonly summaryVersion?: number
+  readonly extractionJobId?: string
+  readonly entityVersion?: number
+  readonly sourceRole: 'direct' | 'supporting' | 'contradicting' | 'inferred'
   readonly createdAt: number
 }
 
@@ -229,6 +234,11 @@ export interface MemorySourceInput {
   readonly sourceId?: string
   readonly locationId?: string
   readonly quote?: string
+  readonly summaryId?: string
+  readonly summaryVersion?: number
+  readonly extractionJobId?: string
+  readonly entityVersion?: number
+  readonly sourceRole?: 'direct' | 'supporting' | 'contradicting' | 'inferred'
 }
 
 /** One relation supplied when creating or updating a memory. */

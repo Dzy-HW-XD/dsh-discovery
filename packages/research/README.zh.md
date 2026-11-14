@@ -9,7 +9,7 @@ kind: "package-group"
 
 ## 摘要
 
-研究包组拥有以 Idea 为中心的工作区基础。Phase 1 提供长期研究 Idea、它们的有向关系与只追加时间线。Phase 2 把 Idea 绑定到原生 DSH Session，记录 Inbox Session，并通过持久 Outbox 与 checkpoint 处理 Session 事件。Phase 3 增加共享 Source、Concept、Claim、Evidence、图关系、Question、Gap、Hypothesis、Discovery、Decision、Artifact 与 Branch，并记录 Session/tool provenance。Phase 5.2 增加确定性、结构化的 Session Summary。记忆、Context 组装、发现与自主执行属于后续阶段。
+研究包组拥有以 Idea 为中心的工作区基础。Phase 1 提供长期研究 Idea、它们的有向关系与只追加时间线。Phase 2 把 Idea 绑定到原生 DSH Session，记录 Inbox Session，并通过持久 Outbox 与 checkpoint 处理 Session 事件。Phase 3 增加共享 Source、Concept、Claim、Evidence、图关系、Question、Gap、Hypothesis、Discovery、Decision、Artifact 与 Branch，并记录 Session/tool provenance。Phase 5.2 增加确定性、结构化的 Session Summary。Phase 5.3 增加 entity-first 候选提取、provenance、去重、版本与冲突标记。记忆、Context 组装、发现与自主执行属于后续阶段。
 
 ## 目录
 
@@ -35,6 +35,6 @@ kind: "package-group"
 
 ## 已知限制与延后工作
 
-- Phase 5.2 止于 Memory Store 与确定性 Summary；提取、召回、Context 组装、发现引擎、Hypothesis review 和编排仍属后续阶段。
+- Phase 5.3 止于候选提取；召回、Context 组装、FTS、review UI、发现引擎和编排仍属后续阶段。
 - 浏览器仍提供 Phase 1 Idea 仪表盘与 Phase 2 Session 控制；Phase 4 增加完整 Idea Workspace。
 - 未实现 Idea 删除；归档是唯一受支持的退役路径。

@@ -12,10 +12,10 @@ import { DatabaseSync } from 'node:sqlite'
 import { ResearchError } from './errors.ts'
 
 /** Physical database layout version, independent of business migrations. */
-export const RESEARCH_DATABASE_LAYOUT_VERSION = 5
+export const RESEARCH_DATABASE_LAYOUT_VERSION = 6
 
 /** Business schema version written by the latest migration. */
-export const RESEARCH_SCHEMA_VERSION = 5
+export const RESEARCH_SCHEMA_VERSION = 6
 
 const MIGRATION_1 = `
 CREATE TABLE research_ideas (
@@ -686,6 +686,17 @@ CREATE INDEX idx_summaries_idea_time
   ON research_session_summaries(idea_id, created_at DESC);
 `
 
+
+const MIGRATION_6 = `
+ALTER TABLE research_memory_sources ADD COLUMN summary_id TEXT;
+ALTER TABLE research_memory_sources ADD COLUMN summary_version INTEGER;
+ALTER TABLE research_memory_sources ADD COLUMN extraction_job_id TEXT;
+ALTER TABLE research_memory_sources ADD COLUMN entity_version INTEGER;
+ALTER TABLE research_memory_sources ADD COLUMN source_role TEXT NOT NULL DEFAULT 'direct'
+  CHECK (source_role IN ('direct','supporting','contradicting','inferred'));
+CREATE INDEX idx_memory_sources_summary ON research_memory_sources(summary_id);
+`
+
 /** One open research database. */
 export class ResearchDatabase {
   private readonly database: DatabaseSync
@@ -762,6 +773,7 @@ export class ResearchDatabase {
       { version: 3, name: 'artifacts', sql: MIGRATION_3 },
       { version: 4, name: 'memory', sql: MIGRATION_4 },
       { version: 5, name: 'session-summaries', sql: MIGRATION_5 },
+      { version: 6, name: 'memory-provenance', sql: MIGRATION_6 },
     ]) {
       const applied = this.database
         .prepare('SELECT version FROM research_schema_migrations WHERE version = ?')

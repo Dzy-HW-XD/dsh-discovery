@@ -6,3 +6,5 @@
 
 export * from './summary-engine.ts'
 export * from './coordinator.ts'
+export * from './memory-extractor.ts'
+export * from './extractor-coordinator.ts'

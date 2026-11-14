@@ -97,3 +97,16 @@ export type SummaryJson = JsonValue
 export function summaryIdempotencyKey(sessionId: string, startSeq: number, endSeq: number): string {
   return `session-summary:${sessionId}:${startSeq}:${endSeq}`
 }
+
+/** Outbox topic used for one completed Session summary extraction. */
+export const SESSION_MEMORY_EXTRACTION_TOPIC = 'research/session-memory-extraction'
+
+/**
+ * Stable extraction idempotency key for one Summary version.
+ * @param summaryId - summary row identity.
+ * @param version - summary generation version.
+ * @returns the outbox idempotency key.
+ */
+export function extractionIdempotencyKey(summaryId: string, version: number): string {
+  return `session-memory-extraction:${summaryId}:${version}`
+}

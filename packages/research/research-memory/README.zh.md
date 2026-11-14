@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 摘要
 
-`dsh-research-memory` 把已提交的研究 Session 转成结构化、可追溯的 Summary。它读取 Research Database 中的权威实体与 Session 事件，按 id 引用实体而不是复制实体，并通过 Research Summary Store 写入。Summary 任务经过 `research_outbox`，因此重复事件、重试与进程重启不会重复生成同一范围。Phase 5.2 只做确定性生成；模型增强、提取、召回与上下文注入属于后续子阶段。
+`dsh-research-memory` 把已提交的研究 Session 转成结构化、可追溯的 Summary。它读取 Research Database 中的权威实体与 Session 事件，按 id 引用实体而不是复制实体，并通过 Research Summary Store 写入。Summary 任务经过 `research_outbox`，因此重复事件、重试与进程重启不会重复生成同一范围。Phase 5.2 只做确定性生成。Phase 5.3 增加 entity-first Extractor，把完成的 Summary 转成候选 Memory。模型增强、召回与上下文注入属于后续子阶段。
 
 ## 目录
 
@@ -35,13 +35,13 @@ const coordinator = new SummaryCoordinator({
 coordinator.start()
 ```
 
-`enqueue(sessionId)` 记录当前观察范围的生成任务，`flush()` 排空到期任务，`summarizeNow(sessionId)` 返回最新 Summary。`dispose()` 只停止定时器，不删除排队任务。
+`enqueue(sessionId)` 记录当前观察范围的生成任务，`flush()` 排空到期任务，`summarizeNow(sessionId)` 返回最新 Summary。`dispose()` 只停止定时器，不删除排队任务。`ExtractorCoordinator` 消费独立的 `research/session-memory-extraction` topic，并通过 `ctx.researchCore.memory` 写入候选。
 
 <a id="understand-the-implementation"></a>
 
 ## 理解实现
 
-引擎选择 provenance 指向当前 Session 的实体，区分 observed/reported Claim 与 inferred Claim，并把 rejected Hypothesis 与 refuting Evidence 归入失败尝试。空 Session 生成最小 Summary，不伪造研究发现。Coordinator 只领取 `research/session-summary` Outbox 行，在事务外读取 Session log，再提交 Summary 与 Outbox 完成状态。幂等键保证重试安全。
+引擎选择 provenance 指向当前 Session 的实体，区分 observed/reported Claim 与 inferred Claim，并把 rejected Hypothesis 与 refuting Evidence 归入失败尝试。空 Session 生成最小 Summary，不伪造研究发现。Coordinator 只领取 `research/session-summary` Outbox 行，在事务外读取 Session log，再提交 Summary 与 Outbox 完成状态。幂等键保证重试安全。Extractor 重新读取权威实体，不信任 Summary 文本；使用精确 hash 与确定性 Jaccard 相似度进行候选复用、版本更新、possible duplicate 与冲突标记。每条 Memory source 记录 Summary id/version、实体 id/version 与 extraction job id。
 
 <a id="model-experience"></a>
 
@@ -58,6 +58,7 @@ coordinator.start()
 ## 已知限制与延后工作
 
 - 只做确定性 Summary；未启用 LLM enrichment。
-- 未实现 Memory Extractor、Retrieval、Context Builder、FTS 或 Review UI。
+- 未实现 Retrieval、Context Builder、FTS 或 Review UI。
+- Preference 不自动推断；需要后续阶段的显式用户表达。Procedure 使用 `strategy` 类型与 `structured.kind = 'procedure'`，来源是祈使句 Decision。
 - 其他 Session 对 Hypothesis 的状态更新不会归因到后一个 Session，因为 Phase 3 实体没有更新 Session 列。
 - 引擎读取整个 Session log；不流式处理超大 Session。
