@@ -594,6 +594,7 @@
     { "path": "./apps/desktop-host" },
     { "path": "./packages/research/research-core" },
     { "path": "./packages/research/research-tools/tsconfig.host.json" },
+    { "path": "./packages/research/research-memory" },
     { "path": "./packages/bundle/research-workspace" },
     { "path": "./apps/desktop/tsconfig.host.json" }
   ]

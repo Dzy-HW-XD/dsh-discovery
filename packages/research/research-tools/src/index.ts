@@ -6,6 +6,7 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
+import { SummaryCoordinator } from '@deepseek-ai/dsh-research-memory'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-query'
 import { Remote, RemoteError, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
@@ -42,8 +43,11 @@ import type {
   ListResearchSessionsRequest,
   RemoveIdeaRelationRequest,
   ResearchSessionDetailView,
+  ResearchSessionSummaryView,
+  SummarizeSessionRequest,
   ResearchWorkspaceRequest,
   ResearchWorkspaceView,
+  SummaryReferenceView,
   WorkspaceEntityView,
   WorkspaceRelationView,
   ResearchSessionView,
@@ -169,6 +173,45 @@ function toWorkspaceEntity(
 }
 
 /**
+ * Project one stored Summary to the wire.
+ * @param summary - domain Summary.
+ * @returns wire-safe Summary.
+ */
+function toSummaryView(summary: import('@deepseek-ai/dsh-research-core').ResearchSessionSummary): ResearchSessionSummaryView {
+  const refs = (items: readonly import('@deepseek-ai/dsh-research-core').SummaryReference[]): SummaryReferenceView[] =>
+    items.map(item => ({
+      entityType: item.entityType,
+      entityId: item.entityId,
+      label: item.label,
+      ...item.version === undefined ? {} : { version: item.version },
+    }))
+  return {
+    id: summary.id,
+    sessionId: summary.sessionId,
+    ...summary.ideaId === undefined ? {} : { ideaId: summary.ideaId },
+    objective: summary.objective,
+    summary: summary.summary,
+    keyFindings: refs(summary.keyFindings),
+    hypothesesCreated: refs(summary.hypothesesCreated),
+    hypothesesValidated: refs(summary.hypothesesValidated),
+    hypothesesRejected: refs(summary.hypothesesRejected),
+    decisions: refs(summary.decisions),
+    failedAttempts: refs(summary.failedAttempts),
+    unresolvedQuestions: refs(summary.unresolvedQuestions),
+    generatedArtifacts: refs(summary.generatedArtifacts),
+    nextSteps: summary.nextSteps,
+    sourceReferences: refs(summary.sourceReferences),
+    eventStartSeq: summary.eventStartSeq,
+    eventEndSeq: summary.eventEndSeq,
+    generationVersion: summary.generationVersion,
+    generationStatus: summary.generationStatus,
+    status: summary.status,
+    createdAt: summary.createdAt,
+    updatedAt: summary.updatedAt,
+  }
+}
+
+/**
  * Convert a domain failure into the wire failure vocabulary; unknown failures
  * remain defects and propagate to the Gateway.
  * @param error - caught failure.
@@ -202,6 +245,7 @@ export default class ResearchController extends TypertRemoteService {
 
   private readonly composition: ResearchComposition
   private readonly creator: ResearchSessionCreator
+  private readonly summaryCoordinator: SummaryCoordinator | undefined
   /** Startup reconciliation; tests may await this before asserting Inbox rows. */
   readonly ready: Promise<void>
 
@@ -214,6 +258,12 @@ export default class ResearchController extends TypertRemoteService {
     this.composition = new ResearchComposition(core)
     this.creator = new ResearchSessionCreator(ctx, core, this.composition)
     core.events.setSessionLogReader(ctx.get('sessionQuery'))
+    const query = ctx.get('sessionQuery')
+    this.summaryCoordinator = query === undefined
+      ? undefined
+      : new SummaryCoordinator({ core, reader: query, logger: ctx.logger })
+    this.summaryCoordinator?.start()
+    ctx.effect(() => () => { this.summaryCoordinator?.dispose() }, 'research-tools: summary coordinator')
     ctx.effect(() => ctx.tools.register(researchIdeaTool(core)), 'research-tools: research_idea')
 
     ctx.on('session/created', (session) => {
@@ -237,9 +287,14 @@ export default class ResearchController extends TypertRemoteService {
     })
     ctx.on('session/disposed', (session) => {
       if (ctx.get('sessionQuery') === undefined || core.sessionBindings.getSession(session.id) === undefined) return
-      void core.events.scanSession(session.id).catch((error: unknown) => {
-        ctx.logger.warn(`research: final Session scan failed for ${session.id}: ${String(error)}`)
-      })
+      void core.events.scanSession(session.id)
+        .then(() => {
+          this.summaryCoordinator?.enqueue(session.id)
+          void this.summaryCoordinator?.pump()
+        })
+        .catch((error: unknown) => {
+          ctx.logger.warn(`research: final Session scan failed for ${session.id}: ${String(error)}`)
+        })
     })
     ctx.on('agent/created', ({ agent }) => {
       let binding = core.sessionBindings.getSession(agent.id)
@@ -291,6 +346,7 @@ export default class ResearchController extends TypertRemoteService {
         }
       }
       await this.ctx.researchCore.events.reconcile()
+      await this.summaryCoordinator?.flush()
     } catch (error: unknown) {
       ctx.logger.warn(`research: startup reconciliation failed: ${String(error)}`)
     }
@@ -514,6 +570,24 @@ export default class ResearchController extends TypertRemoteService {
   }
 
   /**
+   * Generate and return the latest Session summary.
+   * @param request - Session identity.
+   * @returns the latest summary, or null for an unbound Session.
+   */
+  @Remote('summarizeSession')
+  async summarizeSession(request: SummarizeSessionRequest): Promise<ResearchSessionSummaryView | null> {
+    try {
+      if (this.summaryCoordinator === undefined) {
+        throw new ResearchError('research/database-unavailable', 'Session query is not mounted', {})
+      }
+      const summary = await this.summaryCoordinator.summarizeNow(SessionId(request.sessionId))
+      return summary === undefined ? null : toSummaryView(summary)
+    } catch (error) {
+      throwRemote(error)
+    }
+  }
+
+  /**
    * Create one Research Session under an Idea through `ctx.agents.create({ setup })`.
    * @param request - Idea, optional cwd, and optional Workspace.
    * @returns the active Session binding.
@@ -634,7 +708,10 @@ export default class ResearchController extends TypertRemoteService {
       if (current.status !== 'finalized' && current.status !== 'finalizing') {
         this.ctx.researchCore.sessionBindings.markSessionFinalizing(sessionId)
       }
-      return toSessionView(this.ctx.researchCore.sessionBindings.finalizeSession(sessionId, request.summary))
+      const finalized = this.ctx.researchCore.sessionBindings.finalizeSession(sessionId, request.summary)
+      this.summaryCoordinator?.enqueue(sessionId)
+      void this.summaryCoordinator?.pump()
+      return toSessionView(finalized)
     } catch (error) {
       throwRemote(error)
     }

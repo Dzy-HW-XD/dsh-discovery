@@ -52,5 +52,6 @@ export const PRODUCT_PACKAGE_POLICY: Readonly<Record<string, ProductPackagePolic
   'packages/util/package-manifest': { category: 'declarations', reason: 'Shared package metadata declarations have no runtime mount.' },
   'packages/research/research-core': { category: 'optional', reason: 'Research domain storage mounted only by the explicitly installed research-workspace bundle.' },
   'packages/client/ui-research-workspace': { category: 'optional', reason: 'Research dashboard shipped inside the opt-in research-workspace bundle.' },
+  'packages/research/research-memory': { category: 'optional', reason: 'Host-only summary engine used by the opt-in research-workspace bundle.' },
   'packages/bundle/research-workspace': { category: 'optional', reason: 'Opt-in profile layer applied explicitly through cordis.patch.yml; no shipped profile mounts it.' },
 }

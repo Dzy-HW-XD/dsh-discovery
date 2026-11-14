@@ -237,3 +237,42 @@ export interface ResearchWorkspaceView {
   readonly sessions: readonly ResearchSessionView[]
   readonly timeline: readonly TimelineEventView[]
 }
+
+/** One traceable summary reference on the wire. */
+export interface SummaryReferenceView {
+  readonly entityType: string
+  readonly entityId: string
+  readonly label: string
+  readonly version?: number
+}
+
+/** One structured Session Summary on the wire. */
+export interface ResearchSessionSummaryView {
+  readonly id: string
+  readonly sessionId: string
+  readonly ideaId?: string
+  readonly objective: string
+  readonly summary: string
+  readonly keyFindings: readonly SummaryReferenceView[]
+  readonly hypothesesCreated: readonly SummaryReferenceView[]
+  readonly hypothesesValidated: readonly SummaryReferenceView[]
+  readonly hypothesesRejected: readonly SummaryReferenceView[]
+  readonly decisions: readonly SummaryReferenceView[]
+  readonly failedAttempts: readonly SummaryReferenceView[]
+  readonly unresolvedQuestions: readonly SummaryReferenceView[]
+  readonly generatedArtifacts: readonly SummaryReferenceView[]
+  readonly nextSteps: readonly string[]
+  readonly sourceReferences: readonly SummaryReferenceView[]
+  readonly eventStartSeq: number
+  readonly eventEndSeq: number
+  readonly generationVersion: number
+  readonly generationStatus: string
+  readonly status: string
+  readonly createdAt: number
+  readonly updatedAt: number
+}
+
+/** Request an immediate Session summary. */
+export interface SummarizeSessionRequest {
+  readonly sessionId: string
+}

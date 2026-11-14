@@ -115,6 +115,7 @@ export const VIEWER_ENDPOINT_CLASSES = {
   'research/unlinkSession': 'owner-only', // owner unlinks a Session
   'research/finalizeSession': 'owner-only', // owner finalizes a research Session
   'research/getWorkspace': 'owner-only', // owner reads the research workspace projection
+  'research/summarizeSession': 'owner-only', // owner generates a research Session summary
   'session/initializeDefaultModel': 'owner-only', // owner initializes a Session default model
   'session/openWorkspacePath': 'owner-only', // owner opens a Workspace path
   'session/search': 'owner-only', // owner searches across Sessions

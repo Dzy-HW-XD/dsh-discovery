@@ -12,6 +12,7 @@ import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type { ResearchDatabase } from './database.ts'
 import { ResearchError } from './errors.ts'
 import type { ResearchOutbox, ResearchOutboxRow } from './outbox.ts'
+import { summaryIdempotencyKey } from './summary-types.ts'
 import type { ResearchSessionManager } from './sessions.ts'
 
 /**
@@ -32,6 +33,9 @@ export interface ResearchSessionLogReader {
 
 /** Topic used for one committed Session event. */
 export const SESSION_EVENT_TOPIC = 'research/session-event'
+
+/** Topic used for deterministic Session summary generation. */
+export const SESSION_SUMMARY_TOPIC = 'research/session-summary'
 
 /** Maximum outbox attempts before a row is marked dead. */
 const MAX_ATTEMPTS = 10
@@ -116,6 +120,18 @@ export class ResearchSessionEventProcessor {
         idempotencyKey: `session-event:${sessionId}:${event.seq}`,
         payload,
       })
+      if (event.type === 'turn/end') {
+        const binding = this.sessions.getSession(sessionId)
+        if (binding?.ideaId !== undefined) {
+          this.outbox.enqueue({
+            topic: SESSION_SUMMARY_TOPIC,
+            aggregateType: 'research_session',
+            aggregateId: sessionId,
+            idempotencyKey: summaryIdempotencyKey(sessionId, 0, event.seq),
+            payload: { sessionId, ideaId: binding.ideaId, startSeq: 0, endSeq: event.seq },
+          })
+        }
+      }
     })
     void this.pump()
   }
@@ -149,7 +165,7 @@ export class ResearchSessionEventProcessor {
    * startup or after a reconnect.
    */
   async reconcile(): Promise<void> {
-    this.outbox.recoverProcessing()
+    this.outbox.recoverProcessing('worker interrupted', Date.now(), SESSION_EVENT_TOPIC)
     if (this.reader !== undefined) {
       for (const session of this.sessions.listAllSessions()) {
         try {
@@ -181,7 +197,7 @@ export class ResearchSessionEventProcessor {
     this.running = true
     try {
       for (;;) {
-        const rows = this.outbox.claimPending(64)
+        const rows = this.outbox.claimPending(64, Date.now(), SESSION_EVENT_TOPIC)
         if (rows.length === 0) break
         const bySession = new Map<string, ResearchOutboxRow[]>()
         for (const row of rows) {
@@ -216,7 +232,7 @@ export class ResearchSessionEventProcessor {
       if (this.rerun) {
         this.rerun = false
         void this.pump()
-      } else if (this.outbox.nextDueAt() !== undefined) {
+      } else if (this.outbox.nextDueAt(SESSION_EVENT_TOPIC) !== undefined) {
         this.scheduleRetry()
       }
     }
@@ -248,7 +264,7 @@ export class ResearchSessionEventProcessor {
    */
   async flush(): Promise<void> {
     for (let attempt = 0; attempt < 100; attempt += 1) {
-      if (!this.running && this.outbox.pendingCount() === 0) return
+      if (!this.running && this.outbox.pendingCount(Date.now(), SESSION_EVENT_TOPIC) === 0) return
       await new Promise(resolve => setTimeout(resolve, 0))
     }
   }

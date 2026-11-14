@@ -15,6 +15,7 @@ import { ResearchSessionManager } from './sessions.ts'
 import { ResearchSessionEventProcessor } from './events.ts'
 import { ResearchArtifactStore } from './artifacts.ts'
 import { ResearchMemoryStore } from './memory-store.ts'
+import { ResearchSummaryStore } from './summary-store.ts'
 import type {
   AddIdeaRelationInput,
   CreateIdeaInput,
@@ -39,6 +40,8 @@ export * from './artifacts.ts'
 export * from './memory-types.ts'
 export * from './memory-repository.ts'
 export * from './memory-store.ts'
+export * from './summary-types.ts'
+export * from './summary-store.ts'
 export * from './types.ts'
 
 declare module '@deepseek-ai/cordis' {
@@ -73,6 +76,8 @@ export default class ResearchCore extends Service {
   readonly artifacts: ResearchArtifactStore
   /** Phase 5 versioned memory store. */
   readonly memory: ResearchMemoryStore
+  /** Phase 5 structured Session summaries. */
+  readonly summaries: ResearchSummaryStore
 
   /**
    * @param ctx - Host context owning the service lifetime.
@@ -87,6 +92,7 @@ export default class ResearchCore extends Service {
     this.events = new ResearchSessionEventProcessor(ctx, this.database, this.sessionBindings, this.outbox)
     this.artifacts = new ResearchArtifactStore(this.database)
     this.memory = new ResearchMemoryStore(this.database)
+    this.summaries = new ResearchSummaryStore(this.database)
     ctx.effect(() => () => {
       this.events.dispose()
       this.database.close()

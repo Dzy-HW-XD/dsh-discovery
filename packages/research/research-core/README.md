@@ -60,6 +60,8 @@ The service exposes:
 | `memory.addSource` / `addRelation` | Attach provenance or a relation without replacing history |
 | `memory.createConflict` / `resolveConflict` | Preserve contradictory memories for review |
 | `memory.recordSelection` | Record one retrieval injection for audit and token accounting |
+| `summaries.insert` | Append a structured, idempotent Session summary and supersede the previous one |
+| `summaries.list` | Read Session summaries with Idea/Session filters |
 
 ### Lifecycle
 
@@ -79,6 +81,8 @@ Migration v3 adds the artifact tables. Claim and Hypothesis updates append versi
 
 Migration v4 adds the Phase 5 memory tables. Epistemic status and lifecycle status are separate columns; every update appends a memory version and preserves sources, relations, and change metadata. Memory rows are scoped by Idea and carry Session/entity provenance. Selection rows record which memories were injected with their layer, rank, and token estimate.
 
+Migration v5 extends `research_session_summaries` with objective, key findings, hypotheses, decisions, failed attempts, next steps, source references, generation state, and an idempotency key. Summary rows are immutable history: a newer range supersedes the previous row instead of overwriting it.
+
 `ResearchIdea.workspacePath` and `ResearchIdea.lastSessionId` are persisted by the Phase 2 migration and returned when present.
 
 -----
@@ -86,7 +90,7 @@ Migration v4 adds the Phase 5 memory tables. Epistemic status and lifecycle stat
 ## Known Limitations and Deferred Work
 
 - Phase 3 has no context snapshots, jobs, or hypothesis reviews; those arrive with later phases.
-- Phase 5.1 adds the memory store only; summary generation, extraction, retrieval, FTS, review UI, and context injection belong to later sub-phases.
+- Phase 5.2 adds structured summary persistence; summary generation, extraction, retrieval, FTS, review UI, and context injection belong to later sub-phases.
 - Artifact files live under `<root>/artifacts`; moving or truncating them marks the row `missing` or `failed` instead of deleting it.
 - Search uses SQL `LIKE`, not FTS5; the Idea search surface is intentionally small until memory retrieval exists.
 - SQLite calls are synchronous on the Host thread; this is acceptable for small Idea and Session metadata writes, not bulk imports.

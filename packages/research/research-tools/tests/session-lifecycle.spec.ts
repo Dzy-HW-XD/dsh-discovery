@@ -5,7 +5,7 @@ import { Context } from '@deepseek-ai/cordis'
 import { ToolCallId, createUserMessage, LlmAdapter, type GenerateOptions, type LlmResolvedModelInfo, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import ResearchCore, { IdeaId } from '@deepseek-ai/dsh-research-core'
+import ResearchCore, { IdeaId, SESSION_EVENT_TOPIC } from '@deepseek-ai/dsh-research-core'
 import { SessionId } from '@deepseek-ai/dsh-session/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import ResearchController from '../src/index.ts'
@@ -110,7 +110,7 @@ describe('Research Session lifecycle', () => {
     await ctx.researchCore.events.flush()
     const checkpoint = controller.getSession({ sessionId: binding.sessionId })?.checkpoint
     expect(checkpoint?.lastSuccessfullyProcessedSeq).toBeGreaterThanOrEqual(0)
-    expect(ctx.researchCore.outbox.pendingCount()).toBe(0)
+    expect(ctx.researchCore.outbox.pendingCount(Date.now(), SESSION_EVENT_TOPIC)).toBe(0)
   })
 
   it('installs the composition through agent/created for a standard Agent created without setup', async () => {

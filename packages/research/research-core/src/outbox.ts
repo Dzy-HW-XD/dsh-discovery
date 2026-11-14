@@ -89,15 +89,22 @@ export class ResearchOutbox {
    * @param now - claim timestamp.
    * @returns claimed rows.
    */
-  claimPending(limit: number, now: number = Date.now()): ResearchOutboxRow[] {
+  claimPending(limit: number, now: number = Date.now(), topic?: string): ResearchOutboxRow[] {
     const bounded = Math.max(1, Math.min(limit, 100))
     return this.database.transaction(() => {
-      const rows = this.database.connection.prepare(`
-        SELECT * FROM research_outbox
-        WHERE status = 'pending' AND next_attempt_at <= ?
-        ORDER BY created_at ASC, id ASC
-        LIMIT ?
-      `).all(now, bounded)
+      const rows = topic === undefined
+        ? this.database.connection.prepare(`
+            SELECT * FROM research_outbox
+            WHERE status = 'pending' AND next_attempt_at <= ?
+            ORDER BY created_at ASC, id ASC
+            LIMIT ?
+          `).all(now, bounded)
+        : this.database.connection.prepare(`
+            SELECT * FROM research_outbox
+            WHERE status = 'pending' AND next_attempt_at <= ? AND topic = ?
+            ORDER BY created_at ASC, id ASC
+            LIMIT ?
+          `).all(now, topic, bounded)
       const claimed: ResearchOutboxRow[] = []
       for (const row of rows) {
         const id = text(row, 'id')
@@ -153,12 +160,18 @@ export class ResearchOutbox {
    * @param now - recovery timestamp.
    * @returns number of recovered rows.
    */
-  recoverProcessing(error: string = 'worker interrupted', now: number = Date.now()): number {
-    const result = this.database.connection.prepare(`
-      UPDATE research_outbox
-      SET status = 'pending', next_attempt_at = ?, last_error = ?
-      WHERE status = 'processing'
-    `).run(now, error)
+  recoverProcessing(error: string = 'worker interrupted', now: number = Date.now(), topic?: string): number {
+    const result = topic === undefined
+      ? this.database.connection.prepare(`
+          UPDATE research_outbox
+          SET status = 'pending', next_attempt_at = ?, last_error = ?
+          WHERE status = 'processing'
+        `).run(now, error)
+      : this.database.connection.prepare(`
+          UPDATE research_outbox
+          SET status = 'pending', next_attempt_at = ?, last_error = ?
+          WHERE status = 'processing' AND topic = ?
+        `).run(now, error, topic)
     return Number(result.changes)
   }
 
@@ -176,10 +189,14 @@ export class ResearchOutbox {
    * Earliest time a pending row becomes eligible.
    * @returns the timestamp, or undefined when no pending row exists.
    */
-  nextDueAt(): number | undefined {
-    const row = this.database.connection.prepare(`
-      SELECT MIN(next_attempt_at) AS next FROM research_outbox WHERE status = 'pending'
-    `).get() as SqlRow
+  nextDueAt(topic?: string): number | undefined {
+    const row = (topic === undefined
+      ? this.database.connection.prepare(`
+          SELECT MIN(next_attempt_at) AS next FROM research_outbox WHERE status = 'pending'
+        `).get()
+      : this.database.connection.prepare(`
+          SELECT MIN(next_attempt_at) AS next FROM research_outbox WHERE status = 'pending' AND topic = ?
+        `).get(topic)) as SqlRow
     const value = row['next']
     return typeof value === 'number' ? value : undefined
   }
@@ -189,11 +206,16 @@ export class ResearchOutbox {
    * @param now - only rows due at or before this time count.
    * @returns pending row count.
    */
-  pendingCount(now: number = Date.now()): number {
-    const row = this.database.connection.prepare(`
-      SELECT COUNT(*) AS count FROM research_outbox
-      WHERE status = 'pending' AND next_attempt_at <= ?
-    `).get(now) as SqlRow
+  pendingCount(now: number = Date.now(), topic?: string): number {
+    const row = (topic === undefined
+      ? this.database.connection.prepare(`
+          SELECT COUNT(*) AS count FROM research_outbox
+          WHERE status = 'pending' AND next_attempt_at <= ?
+        `).get(now)
+      : this.database.connection.prepare(`
+          SELECT COUNT(*) AS count FROM research_outbox
+          WHERE status = 'pending' AND next_attempt_at <= ? AND topic = ?
+        `).get(now, topic)) as SqlRow
     return integer(row, 'count')
   }
 }

@@ -12,10 +12,10 @@ import { DatabaseSync } from 'node:sqlite'
 import { ResearchError } from './errors.ts'
 
 /** Physical database layout version, independent of business migrations. */
-export const RESEARCH_DATABASE_LAYOUT_VERSION = 4
+export const RESEARCH_DATABASE_LAYOUT_VERSION = 5
 
 /** Business schema version written by the latest migration. */
-export const RESEARCH_SCHEMA_VERSION = 4
+export const RESEARCH_SCHEMA_VERSION = 5
 
 const MIGRATION_1 = `
 CREATE TABLE research_ideas (
@@ -660,6 +660,32 @@ CREATE INDEX idx_memory_selections_idea
   ON research_memory_selections(idea_id, created_at DESC);
 `
 
+
+const MIGRATION_5 = `
+ALTER TABLE research_session_summaries ADD COLUMN objective TEXT NOT NULL DEFAULT '';
+ALTER TABLE research_session_summaries ADD COLUMN key_findings_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(key_findings_json));
+ALTER TABLE research_session_summaries ADD COLUMN hypotheses_created_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(hypotheses_created_json));
+ALTER TABLE research_session_summaries ADD COLUMN hypotheses_validated_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(hypotheses_validated_json));
+ALTER TABLE research_session_summaries ADD COLUMN hypotheses_rejected_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(hypotheses_rejected_json));
+ALTER TABLE research_session_summaries ADD COLUMN decisions_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(decisions_json));
+ALTER TABLE research_session_summaries ADD COLUMN unresolved_questions_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(unresolved_questions_json));
+ALTER TABLE research_session_summaries ADD COLUMN failed_attempts_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(failed_attempts_json));
+ALTER TABLE research_session_summaries ADD COLUMN next_steps_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(next_steps_json));
+ALTER TABLE research_session_summaries ADD COLUMN generated_artifacts_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(generated_artifacts_json));
+ALTER TABLE research_session_summaries ADD COLUMN source_references_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(source_references_json));
+ALTER TABLE research_session_summaries ADD COLUMN generation_status TEXT NOT NULL DEFAULT 'pending'
+  CHECK (generation_status IN ('pending','generating','completed','failed','skipped'));
+ALTER TABLE research_session_summaries ADD COLUMN generation_error TEXT;
+ALTER TABLE research_session_summaries ADD COLUMN idempotency_key TEXT;
+ALTER TABLE research_session_summaries ADD COLUMN updated_at INTEGER;
+
+CREATE UNIQUE INDEX ux_summary_idempotency
+  ON research_session_summaries(idempotency_key)
+  WHERE idempotency_key IS NOT NULL;
+CREATE INDEX idx_summaries_idea_time
+  ON research_session_summaries(idea_id, created_at DESC);
+`
+
 /** One open research database. */
 export class ResearchDatabase {
   private readonly database: DatabaseSync
@@ -735,6 +761,7 @@ export class ResearchDatabase {
       { version: 2, name: 'sessions', sql: MIGRATION_2 },
       { version: 3, name: 'artifacts', sql: MIGRATION_3 },
       { version: 4, name: 'memory', sql: MIGRATION_4 },
+      { version: 5, name: 'session-summaries', sql: MIGRATION_5 },
     ]) {
       const applied = this.database
         .prepare('SELECT version FROM research_schema_migrations WHERE version = ?')

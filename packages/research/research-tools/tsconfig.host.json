@@ -53,6 +53,15 @@
     },
     {
       "path": "../../llm/llm"
+    },
+    {
+      "path": "../research-memory"
+    },
+    {
+      "path": "../../session-query/session-query-sqlite"
+    },
+    {
+      "path": "../../session/session-projection"
     }
   ]
 }

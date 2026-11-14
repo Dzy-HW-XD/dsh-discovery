@@ -288,7 +288,7 @@ describe('research memory migration v4', () => {
       'research_memory_selections', 'research_memory_sources', 'research_memory_versions',
     ])
     expect(core.database.connection.prepare('SELECT version FROM research_schema_migrations ORDER BY version').all()
-      .map(row => row['version'])).toEqual([1, 2, 3, 4])
+      .map(row => row['version'])).toEqual([1, 2, 3, 4, 5])
     core.memory.createMemory({
       ideaId, memoryType: 'goal', title: 'Persisted', content: 'Survives reopen.',
       epistemicStatus: 'verified', sourceSessionId: sessionId,
@@ -297,7 +297,7 @@ describe('research memory migration v4', () => {
     expect(reopened.connection.prepare('SELECT COUNT(*) AS count FROM research_memory_records').get())
       .toMatchObject({ count: 1 })
     expect(reopened.connection.prepare('SELECT version FROM research_schema_migrations ORDER BY version').all()
-      .map(row => row['version'])).toEqual([1, 2, 3, 4])
+      .map(row => row['version'])).toEqual([1, 2, 3, 4, 5])
     reopened.close()
   })
 
@@ -316,12 +316,13 @@ describe('research memory migration v4', () => {
       INSERT INTO research_ideas VALUES ('idea_legacy');
       CREATE TABLE research_sessions (session_id TEXT PRIMARY KEY) STRICT;
       CREATE TABLE research_timeline_events (id TEXT PRIMARY KEY, idea_id TEXT NOT NULL) STRICT;
+      CREATE TABLE research_session_summaries (id TEXT PRIMARY KEY, idea_id TEXT, created_at INTEGER NOT NULL DEFAULT 0) STRICT;
       PRAGMA user_version = 3;
     `)
     legacy.close()
     const upgraded = new ResearchDatabase(root)
     expect(upgraded.connection.prepare('SELECT version FROM research_schema_migrations ORDER BY version').all()
-      .map(row => row['version'])).toEqual([1, 2, 3, 4])
+      .map(row => row['version'])).toEqual([1, 2, 3, 4, 5])
     expect(upgraded.connection.prepare('SELECT id FROM research_ideas').all().map(row => row['id'])).toEqual(['idea_legacy'])
     expect(upgraded.connection.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'research_memory_selections'",

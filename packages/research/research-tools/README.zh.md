@@ -32,7 +32,7 @@ kind: "package-reference"
 
 ### Remote 操作
 
-`listIdeas`、`getIdea`、`createIdea`、`updateIdea`、`archiveIdea`、`addIdeaRelation`、`removeIdeaRelation`、`listIdeaRelations`、`listTimeline`，Phase 2 的 `createSession`、`listSessions`、`listInboxSessions`、`getSession`、`linkSession`、`unlinkSession`、`finalizeSession`，以及 Phase 4 Idea Workspace 投影 `getWorkspace`。失败使用稳定的 `research/*` 代码，包括 `research/version-conflict`、`research/invalid-transition`、`research/event-gap` 和 `research/session-not-found`。
+`listIdeas`、`getIdea`、`createIdea`、`updateIdea`、`archiveIdea`、`addIdeaRelation`、`removeIdeaRelation`、`listIdeaRelations`、`listTimeline`，Phase 2 的 `createSession`、`listSessions`、`listInboxSessions`、`getSession`、`linkSession`、`unlinkSession`、`finalizeSession`，Phase 4 Idea Workspace 投影 `getWorkspace`，以及确定性 Session Summary 的 `summarizeSession`。失败使用稳定的 `research/*` 代码，包括 `research/version-conflict`、`research/invalid-transition`、`research/event-gap` 和 `research/session-not-found`。
 
 ### 模型工具
 
@@ -46,7 +46,7 @@ kind: "package-reference"
 
 ## 理解实现
 
-Host controller 把领域值映射为 wire-safe 视图，并把 `ResearchError` 映射为同 code、同 details 的 `RemoteError`。Research 创建的会话使用 `ctx.agents.create({ setup })`，因此 Idea brief 与作用域化工具在首次请求前就存在。标准 UI 会话与恢复路径使用串行 `agent/created` fallback；安装对每个 Agent 幂等，解绑时会移除。Phase 3 工具调用 `ctx.researchCore.artifacts`；artifact 内容在数据库行提交前原子写入。本包通过 `@deepseek-ai/dsh-api-remotes` 贡献 Remote 类型，因此浏览器得到生成的签名，而不是手写传输代码。
+Host controller 把领域值映射为 wire-safe 视图，并把 `ResearchError` 映射为同 code、同 details 的 `RemoteError`。Research 创建的会话使用 `ctx.agents.create({ setup })`，因此 Idea brief 与作用域化工具在首次请求前就存在。标准 UI 会话与恢复路径使用串行 `agent/created` fallback；安装对每个 Agent 幂等，解绑时会移除。Phase 3 工具调用 `ctx.researchCore.artifacts`；artifact 内容在数据库行提交前原子写入。`summarizeSession` 驱动 Host-only 的 `dsh-research-memory` coordinator，在数据库事务外读取已提交 Session log，并通过 `ctx.researchCore.summaries` 写入结构化 Summary。本包通过 `@deepseek-ai/dsh-api-remotes` 贡献 Remote 类型，因此浏览器得到生成的签名，而不是手写传输代码。
 
 -----
 
@@ -89,4 +89,5 @@ Token 增长随请求的 `limit` 以及所选 Idea 或时间线的大小变化�
 - `research_idea` 仍全局注册；`research_session` 与 Phase 3 artifact 工具仅作用于已绑定 Agent。
 - 记忆提取、Context 组装、发现引擎、Hypothesis review 与自主编排属于后续阶段。
 - 浏览器尚无 artifact 读取或编辑 Remote 面；Phase 4 增加 Idea Workspace 标签页。
+- Summary 仅做确定性生成；Memory 提取、召回与 UI 属于后续 Phase 5 子阶段。
 - Session 事件通过 Research Outbox 持久处理；仪表盘仍在每次操作后刷新，尚未订阅 `research/changed`。

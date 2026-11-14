@@ -616,6 +616,7 @@
       "@deepseek-ai/dsh-workspace": ["./packages/workspace/workspace/src"],
       "@deepseek-ai/dsh-workspace-changes": ["./packages/deliverables/workspace-changes/src"],
       "@deepseek-ai/dsh-research-core": ["./packages/research/research-core/src"],
+      "@deepseek-ai/dsh-research-memory": ["./packages/research/research-memory/src"],
       "@deepseek-ai/dsh-research-tools": ["./packages/research/research-tools/src"],
       "@deepseek-ai/dsh-research-tools/types": ["./packages/research/research-tools/src/types.ts"],
       "@deepseek-ai/dsh-client-ui-research-workspace": ["./packages/client/ui-research-workspace/src/index.ts"],

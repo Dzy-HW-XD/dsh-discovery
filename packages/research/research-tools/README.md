@@ -30,7 +30,7 @@ Mount the plugin after `dsh-research-core` and the tool runtime are present. It 
 
 ### Remote operations
 
-`listIdeas`, `getIdea`, `createIdea`, `updateIdea`, `archiveIdea`, `addIdeaRelation`, `removeIdeaRelation`, `listIdeaRelations`, `listTimeline`, the Phase 2 Session operations `createSession`, `listSessions`, `listInboxSessions`, `getSession`, `linkSession`, `unlinkSession`, `finalizeSession`, and `getWorkspace` for the Phase 4 Idea Workspace projection. Failures use stable `research/*` codes, including `research/version-conflict`, `research/invalid-transition`, `research/event-gap`, and `research/session-not-found`.
+`listIdeas`, `getIdea`, `createIdea`, `updateIdea`, `archiveIdea`, `addIdeaRelation`, `removeIdeaRelation`, `listIdeaRelations`, `listTimeline`, the Phase 2 Session operations `createSession`, `listSessions`, `listInboxSessions`, `getSession`, `linkSession`, `unlinkSession`, `finalizeSession`, `getWorkspace` for the Phase 4 Idea Workspace projection, and `summarizeSession` for deterministic Session summaries. Failures use stable `research/*` codes, including `research/version-conflict`, `research/invalid-transition`, `research/event-gap`, and `research/session-not-found`.
 
 ### Model tool
 
@@ -42,7 +42,7 @@ A bound Session also receives `research_session` (`list`, `get`, `finalize`) and
 
 ## Understand the implementation
 
-The Host controller maps domain values to wire-safe views and maps `ResearchError` to `RemoteError` with the same code and details. Research-created Sessions use `ctx.agents.create({ setup })`, so the Idea brief and scoped tools exist before the first request. Standard UI Sessions and resumes use the serial `agent/created` fallback; installation is idempotent per Agent and can be removed when the Session is unlinked. Phase 3 tools call `ctx.researchCore.artifacts`; artifact content is written atomically before its row commits. The package contributes its Remote types through `@deepseek-ai/dsh-api-remotes`, so the browser receives generated method signatures rather than hand-written transport code.
+The Host controller maps domain values to wire-safe views and maps `ResearchError` to `RemoteError` with the same code and details. Research-created Sessions use `ctx.agents.create({ setup })`, so the Idea brief and scoped tools exist before the first request. Standard UI Sessions and resumes use the serial `agent/created` fallback; installation is idempotent per Agent and can be removed when the Session is unlinked. Phase 3 tools call `ctx.researchCore.artifacts`; artifact content is written atomically before its row commits. `summarizeSession` drives the Host-only `dsh-research-memory` coordinator, which reads the committed Session log outside the database transaction and writes structured summaries through `ctx.researchCore.summaries`. The package contributes its Remote types through `@deepseek-ai/dsh-api-remotes`, so the browser receives generated method signatures rather than hand-written transport code.
 
 -----
 
@@ -81,4 +81,5 @@ Results are appended after the reusable request prefix. They do not change the t
 - `research_idea` remains global; `research_session` and the Phase 3 artifact tools are scoped to bound Agents.
 - Memory extraction, context assembly, the discovery engine, hypothesis review, and autonomous orchestration are later phases.
 - The browser has no artifact read or edit Remote surface yet; Phase 4 adds the Idea Workspace tabs.
+- Summary generation is deterministic only; Memory extraction, retrieval, and UI are later Phase 5 sub-phases.
 - Session event processing persists through the Research outbox; the dashboard still refreshes after each operation instead of subscribing to `research/changed`.
